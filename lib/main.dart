@@ -1,0 +1,140 @@
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart';
+import 'package:window_manager/window_manager.dart';
+import 'package:pos/layouts/main_layout.dart';
+import 'package:pos/screens/login_screen.dart';
+import 'package:pos/screens/jugada_screen.dart';
+import 'package:pos/screens/resultados_screen.dart';
+import 'package:pos/screens/cuotas_screen.dart';
+import 'package:pos/screens/ventas_screen.dart';
+import 'package:pos/state/pos_state.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+    await windowManager.ensureInitialized();
+
+    WindowOptions windowOptions = const WindowOptions(
+      size: Size(1920, 1080),
+      minimumSize: Size(1024, 768),
+      center: true,
+      backgroundColor: Colors.transparent,
+      skipTaskbar: false,
+      titleBarStyle:
+          TitleBarStyle.hidden, // sin bordes; barra propia en DesktopLayout
+    );
+
+    windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+      await windowManager.focus();
+      await windowManager.maximize();
+    });
+  }
+
+  runApp(const RacingDogsApp());
+}
+
+class RacingDogsApp extends StatelessWidget {
+  const RacingDogsApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Racing Dogs POS',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        fontFamily: 'DinNextLtPro',
+        scaffoldBackgroundColor: Colors.black,
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFFD4AF37), // Gold
+          secondary: Color(0xFF1E3A1E), // Dark green
+          surface: Colors.black,
+        ),
+      ),
+      home: const RootScreen(),
+    );
+  }
+}
+
+class RootScreen extends StatefulWidget {
+  const RootScreen({super.key});
+
+  @override
+  State<RootScreen> createState() => _RootScreenState();
+}
+
+class _RootScreenState extends State<RootScreen> {
+  bool _loggedIn = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loggedIn) {
+      return LoginScreen(onAccess: () => setState(() => _loggedIn = true));
+    }
+    return const MainScreen();
+  }
+}
+
+class MainScreen extends StatefulWidget {
+  const MainScreen({super.key});
+
+  @override
+  State<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
+  int _currentTabIndex = 0;
+  late final PosState _state;
+
+  @override
+  void initState() {
+    super.initState();
+    _state = PosState();
+  }
+
+  @override
+  void dispose() {
+    _state.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: _state,
+      builder: (context, child) {
+        // Resolve active tab screen widget
+        Widget activeScreen;
+        switch (_currentTabIndex) {
+          case 0:
+            activeScreen = JugadaScreen(state: _state);
+            break;
+          case 1:
+            activeScreen = ResultadosScreen(state: _state);
+            break;
+          case 2:
+            activeScreen = CuotasScreen(state: _state);
+            break;
+          case 3:
+            activeScreen = VentasScreen(state: _state);
+            break;
+          default:
+            activeScreen = JugadaScreen(state: _state);
+        }
+
+        return MainLayout(
+          currentTabIndex: _currentTabIndex,
+          onTabChanged: (index) {
+            setState(() {
+              _currentTabIndex = index;
+            });
+          },
+          state: _state,
+          child: activeScreen,
+        );
+      },
+    );
+  }
+}
