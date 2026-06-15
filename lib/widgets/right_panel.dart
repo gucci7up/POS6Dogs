@@ -3,8 +3,9 @@ import 'package:pos/state/pos_state.dart';
 
 class RightPanel extends StatefulWidget {
   final PosState state;
+  final VoidCallback onLogout;
 
-  const RightPanel({super.key, required this.state});
+  const RightPanel({super.key, required this.state, required this.onLogout});
 
   @override
   State<RightPanel> createState() => _RightPanelState();
@@ -103,6 +104,27 @@ class _RightPanelState extends State<RightPanel> {
                       }
                     },
                   ),
+                  const SizedBox(height: 20),
+                  const Divider(color: Colors.white24),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _confirmLogout();
+                    },
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      alignment: Alignment.centerLeft,
+                    ),
+                    child: const Text(
+                      'CERRAR SESIÓN',
+                      style: TextStyle(
+                        fontFamily: 'DinNextLtPro',
+                        color: Colors.redAccent,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ],
               ),
               actions: [
@@ -139,6 +161,58 @@ class _RightPanelState extends State<RightPanel> {
     );
   }
 
+  void _confirmLogout() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1B1B1B),
+          title: const Text(
+            'Cerrar sesión',
+            style: TextStyle(
+              fontFamily: 'DinNextLtPro',
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: const Text(
+            '¿Seguro que deseas cerrar la sesión actual?',
+            style: TextStyle(
+              fontFamily: 'DinNextLtPro',
+              color: Colors.white70,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'CANCELAR',
+                style: TextStyle(
+                  fontFamily: 'DinNextLtPro',
+                  color: Colors.white70,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                widget.onLogout();
+              },
+              child: const Text(
+                'CERRAR SESIÓN',
+                style: TextStyle(
+                  fontFamily: 'DinNextLtPro',
+                  color: Colors.redAccent,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -153,7 +227,7 @@ class _RightPanelState extends State<RightPanel> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                'AGENCIA ${widget.state.agencyId}',
+                'AGENCIA ${widget.state.agencyName}',
                 style: const TextStyle(
                   fontFamily: 'DinNextLtPro',
                   color: Color(0xFFD4AF37),

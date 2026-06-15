@@ -3,11 +3,15 @@ import 'package:flutter/material.dart';
 class RaceInfoPanel extends StatelessWidget {
   final int raceNumber;
   final int countdownSeconds;
+  final String nextRaceStartLabel;
+  final String raceStatusLabel;
 
   const RaceInfoPanel({
     super.key,
     required this.raceNumber,
     required this.countdownSeconds,
+    required this.nextRaceStartLabel,
+    required this.raceStatusLabel,
   });
 
   @override
@@ -63,7 +67,7 @@ class RaceInfoPanel extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                _getEmpiezaTime(raceNumber),
+                nextRaceStartLabel,
                 style: const TextStyle(
                   fontFamily: 'DinNextLtPro',
                   color: Colors.white,
@@ -90,9 +94,9 @@ class RaceInfoPanel extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 2),
-              const Text(
-                '12:00:00',
-                style: TextStyle(
+              Text(
+                raceStatusLabel,
+                style: const TextStyle(
                   fontFamily: 'DinNextLtPro',
                   color: Color(0xFFD4AF37), // Gold text
                   fontSize: 20,
@@ -174,16 +178,5 @@ class RaceInfoPanel extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  // Dynamic start time based on race number (e.g. 4226 -> 12:05:00)
-  String _getEmpiezaTime(int raceNum) {
-    final baseMinutes = (raceNum - 4226) * 5 + 5;
-    final hours = 12 + (baseMinutes ~/ 60);
-    final minutes = baseMinutes % 60;
-    
-    final hStr = hours.toString().padLeft(2, '0');
-    final mStr = minutes.toString().padLeft(2, '0');
-    return "$hStr:$mStr:00";
   }
 }

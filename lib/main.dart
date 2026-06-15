@@ -8,6 +8,7 @@ import 'package:pos/screens/jugada_screen.dart';
 import 'package:pos/screens/resultados_screen.dart';
 import 'package:pos/screens/cuotas_screen.dart';
 import 'package:pos/screens/ventas_screen.dart';
+import 'package:pos/services/api_client.dart';
 import 'package:pos/state/pos_state.dart';
 
 void main() async {
@@ -66,19 +67,52 @@ class RootScreen extends StatefulWidget {
 }
 
 class _RootScreenState extends State<RootScreen> {
-  bool _loggedIn = false;
+  final ApiClient _apiClient = ApiClient();
+  AuthResult? _auth;
+
+  Future<String?> _handleLogin(String username, String password) async {
+    try {
+      final auth = await _apiClient.login(username, password);
+      setState(() => _auth = auth);
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } catch (_) {
+      return 'No se pudo conectar con el servidor';
+    }
+  }
+
+  void _handleLogout() {
+    _apiClient.setToken(null);
+    setState(() => _auth = null);
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (!_loggedIn) {
-      return LoginScreen(onAccess: () => setState(() => _loggedIn = true));
+    final auth = _auth;
+    if (auth == null) {
+      return LoginScreen(onLogin: _handleLogin);
     }
-    return const MainScreen();
+    return MainScreen(
+      key: ValueKey(auth.userId),
+      apiClient: _apiClient,
+      auth: auth,
+      onLogout: _handleLogout,
+    );
   }
 }
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  final ApiClient apiClient;
+  final AuthResult auth;
+  final VoidCallback onLogout;
+
+  const MainScreen({
+    super.key,
+    required this.apiClient,
+    required this.auth,
+    required this.onLogout,
+  });
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -91,7 +125,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
-    _state = PosState();
+    _state = PosState(api: widget.apiClient, auth: widget.auth);
   }
 
   @override
@@ -132,6 +166,7 @@ class _MainScreenState extends State<MainScreen> {
             });
           },
           state: _state,
+          onLogout: widget.onLogout,
           child: activeScreen,
         );
       },

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:pos/services/api_client.dart';
 
 class Bet {
   final int dog1;
@@ -76,15 +77,74 @@ class RaceOdds {
 }
 
 class PosState extends ChangeNotifier {
-  int _currentRace = 4226;
+  final ApiClient _api;
+  final AuthResult _auth;
+
+  PosState({required ApiClient api, required AuthResult auth})
+      : _api = api,
+        _auth = auth {
+    _refreshRaceStatus();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _refreshRaceStatus());
+    unawaited(_refreshSalesHistory());
+    unawaited(_refreshResultsHistory());
+    unawaited(_refreshOddsHistory());
+  }
+
+  int _currentRace = 0;
   int get currentRace => _currentRace;
 
-  int _countdownSeconds = 300;
+  int _countdownSeconds = 0;
   int get countdownSeconds => _countdownSeconds;
 
-  final String agencyId = 'a33698ac-4338-4ef0-9805-d8bbf07b15eb';
-  final String currentUser = 'admin';
-  final bool isServerOnline = true;
+  String? _currentRaceId;
+  String _raceStatus = 'IDLE';
+  String get raceStatus => _raceStatus;
+
+  /// Indica si todavía se pueden hacer jugadas. El backend cierra la venta
+  /// 5 segundos antes de que arranque la carrera (closedDelaySeconds), por
+  /// lo que basta con permitir jugadas únicamente mientras está OPEN.
+  bool get isSalesOpen => _raceStatus == 'OPEN';
+
+  // Tiempo fijo entre el cierre de venta y el inicio de la siguiente carrera
+  // (closedDelaySeconds + videoSeconds del backend: 5 + 50).
+  static const int _postSaleSeconds = 55;
+
+  DateTime? _nextRaceStartEstimate;
+
+  /// Hora estimada (HH:mm:ss) en que abrirá la siguiente carrera, o '--:--:--'
+  /// si no se conoce todavía.
+  String get nextRaceStartLabel {
+    final t = _nextRaceStartEstimate;
+    if (t == null) return '--:--:--';
+    final local = t.toLocal();
+    final h = local.hour.toString().padLeft(2, '0');
+    final m = local.minute.toString().padLeft(2, '0');
+    final s = local.second.toString().padLeft(2, '0');
+    return '$h:$m:$s';
+  }
+
+  /// Estado de la carrera actual, en español, para mostrar en el panel.
+  String get raceStatusLabel {
+    switch (_raceStatus) {
+      case 'OPEN':
+        return 'ABIERTA';
+      case 'CLOSED':
+        return 'CERRADA';
+      case 'RUNNING':
+        return 'EN CURSO';
+      case 'FINISHED':
+        return 'FINALIZADA';
+      default:
+        return 'INACTIVA';
+    }
+  }
+
+  String get agencyId => _auth.agencyId ?? '-';
+  String get agencyName => _auth.agencyName ?? _auth.agencyId ?? 'SIN AGENCIA';
+  String get currentUser => _auth.username;
+
+  bool _isServerOnline = true;
+  bool get isServerOnline => _isServerOnline;
 
   String _selectedLanguage = 'Español';
   String get selectedLanguage => _selectedLanguage;
@@ -120,57 +180,76 @@ class PosState extends ChangeNotifier {
   List<Ticket> _salesHistory = [];
   List<Ticket> get salesHistory => _salesHistory;
 
+  List<RaceResult> _resultsHistory = [];
+  List<RaceResult> get resultsHistory => _resultsHistory;
+
+  List<RaceOdds> _oddsHistoryList = [];
+  List<RaceOdds> get oddsHistory => _oddsHistoryList;
+
+  // Cuotas en vivo de la carrera actual, indexadas como "WINNER:3", "EXACTA:1-2", "TRIFECTA:1-2-3"
+  Map<String, double> _liveOdds = {};
+
   Timer? _timer;
 
-  // Static Data lists
-  final List<RaceResult> resultsHistory = [
-    RaceResult(raceNumber: 4226, winner1: 6, winner2: 2, bonus: "x2"),
-    RaceResult(raceNumber: 4225, winner1: 4, winner2: 6, bonus: ""),
-    RaceResult(raceNumber: 4224, winner1: 6, winner2: 3, bonus: ""),
-    RaceResult(raceNumber: 4223, winner1: 2, winner2: 1, bonus: ""),
-    RaceResult(raceNumber: 4222, winner1: 6, winner2: 1, bonus: ""),
-    RaceResult(raceNumber: 4221, winner1: 6, winner2: 4, bonus: ""),
-    RaceResult(raceNumber: 4220, winner1: 3, winner2: 2, bonus: ""),
-    RaceResult(raceNumber: 4219, winner1: 2, winner2: 1, bonus: "x2"),
-    RaceResult(raceNumber: 4218, winner1: 6, winner2: 4, bonus: ""),
-    RaceResult(raceNumber: 4217, winner1: 1, winner2: 2, bonus: ""),
-    RaceResult(raceNumber: 4216, winner1: 6, winner2: 4, bonus: ""),
-    RaceResult(raceNumber: 4215, winner1: 3, winner2: 2, bonus: ""),
-    RaceResult(raceNumber: 4214, winner1: 1, winner2: 4, bonus: ""),
-  ];
+  Future<void> _refreshRaceStatus() async {
+    try {
+      final status = await _api.getRaceEngineStatus();
+      _isServerOnline = true;
 
-  final List<RaceOdds> oddsHistory = [
-    RaceOdds(raceNumber: 4226, odds: [15.1, 3.8, 5.2, 7.3, 17.0, 9.1]),
-    RaceOdds(raceNumber: 4225, odds: [11.2, 7.5, 6.2, 4.8, 13.8, 5.9]),
-    RaceOdds(raceNumber: 4224, odds: [4.4, 11.3, 4.9, 16.4, 5.5, 8.4]),
-    RaceOdds(raceNumber: 4223, odds: [5.5, 12.6, 9.9, 4.6, 7.5, 5.1]),
-    RaceOdds(raceNumber: 4222, odds: [8.8, 7.0, 4.6, 14.0, 16.9, 5.8]),
-    RaceOdds(raceNumber: 4221, odds: [4.9, 11.2, 16.5, 5.7, 4.6, 6.2]),
-    RaceOdds(raceNumber: 4220, odds: [12.1, 8.1, 4.8, 4.5, 10.5, 6.2]),
-    RaceOdds(raceNumber: 4219, odds: [2.6, 9.5, 17.0, 15.6, 13.0, 6.8]),
-    RaceOdds(raceNumber: 4218, odds: [15.0, 7.8, 5.0, 6.3, 9.3, 4.1]),
-    RaceOdds(raceNumber: 4217, odds: [4.9, 18.3, 6.1, 11.0, 9.0, 6.7]),
-    RaceOdds(raceNumber: 4216, odds: [17.5, 5.6, 8.1, 11.1, 5.8, 4.9]),
-    RaceOdds(raceNumber: 4215, odds: [10.4, 7.0, 13.4, 5.0, 18.2, 5.2]),
-    RaceOdds(raceNumber: 4214, odds: [5.3, 15.5, 6.3, 8.5, 10.9, 17.8]),
-  ];
+      final currentRaceJson = status['currentRace'] as Map<String, dynamic>?;
+      if (currentRaceJson != null) {
+        _currentRace = (currentRaceJson['numero'] as num).toInt();
+        _raceStatus = (status['status'] ?? 'IDLE') as String;
+        final remainingSale = status['remainingSaleSeconds'] as num?;
+        final remainingVideo = status['remainingVideoSeconds'] as num?;
+        _countdownSeconds = (remainingSale ?? remainingVideo ?? 0).toInt();
 
-  PosState() {
-    _startTimer();
+        final saleEndAtStr = currentRaceJson['saleEndAt'] as String?;
+        if (saleEndAtStr != null) {
+          _nextRaceStartEstimate = DateTime.parse(saleEndAtStr)
+              .add(const Duration(seconds: _postSaleSeconds));
+        }
+
+        final newRaceId = currentRaceJson['id'] as String?;
+        if (newRaceId != _currentRaceId) {
+          final hadPreviousRace = _currentRaceId != null;
+          _currentRaceId = newRaceId;
+          if (hadPreviousRace) {
+            unawaited(_refreshResultsHistory());
+            unawaited(_refreshOddsHistory());
+          }
+          unawaited(_refreshLiveOdds());
+        }
+
+        if (_raceStatus != 'OPEN' &&
+            (_hasAnySelection || _currentTicketPlays.isNotEmpty)) {
+          _resetSelection();
+          _currentTicketPlays.clear();
+        }
+      }
+      notifyListeners();
+    } catch (_) {
+      _isServerOnline = false;
+      notifyListeners();
+    }
   }
 
-  void _startTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_countdownSeconds > 0) {
-        _countdownSeconds--;
-        notifyListeners();
-      } else {
-        // Reset countdown to 300 and advance race
-        _countdownSeconds = 300;
-        _currentRace++;
-        notifyListeners();
+  Future<void> _refreshLiveOdds() async {
+    final raceId = _currentRaceId;
+    if (raceId == null) return;
+    try {
+      final rows = await _api.getRaceOddsLive(raceId);
+      final odds = <String, double>{};
+      for (final row in rows) {
+        final betType = row['betType'] as String;
+        final selection = row['selection'] as String;
+        odds['$betType:$selection'] = double.parse(row['currentOdds'].toString());
       }
-    });
+      _liveOdds = odds;
+      notifyListeners();
+    } catch (_) {
+      // Mantiene las cuotas anteriores si falla la actualización
+    }
   }
 
   void selectDog1(int dogNumber) {
@@ -246,73 +325,53 @@ class PosState extends ChangeNotifier {
     notifyListeners();
   }
 
-  RaceOdds get _currentOdds => oddsHistory.firstWhere(
-        (o) => o.raceNumber == _currentRace,
-        orElse: () => oddsHistory.first,
-      );
-
   // Cuota "GANAR": cuota del perro solo
-  double getGanarOdds(int dog) {
-    final o = _currentOdds.odds[dog - 1];
-    return double.parse(o.clamp(1.5, 99.9).toStringAsFixed(2));
-  }
+  double getGanarOdds(int dog) => _liveOdds['WINNER:$dog'] ?? 1.5;
 
   // Cuota "EXACTA": cuota del palé combinado con el siguiente perro
   double getExactaOdds(int dog) {
     final other = dog % 6 + 1;
-    final o1 = _currentOdds.odds[dog - 1];
-    final o2 = _currentOdds.odds[other - 1];
-    return double.parse((o1 * o2 * 0.4).clamp(1.5, 99.9).toStringAsFixed(2));
+    return _liveOdds['EXACTA:$dog-$other'] ?? 1.5;
   }
 
   // Cuota "TRIFECTA": cuota del trío combinado con los dos siguientes perros
   double getTrifectaOdds(int dog) {
     final next1 = dog % 6 + 1;
     final next2 = next1 % 6 + 1;
-    final o1 = _currentOdds.odds[dog - 1];
-    final o2 = _currentOdds.odds[next1 - 1];
-    final o3 = _currentOdds.odds[next2 - 1];
-    return double.parse((o1 * o2 * o3 * 0.05).clamp(1.5, 99.9).toStringAsFixed(2));
+    return _liveOdds['TRIFECTA:$dog-$next1-$next2'] ?? 1.5;
   }
 
   void _addCalculatedPlay(int dog1, int dog2, double amount) {
-    final o1 = _currentOdds.odds[dog1 - 1];
-    final o2 = _currentOdds.odds[dog2 - 1];
-    // Product of individual odds times a multiplier, clamped for realism
-    final calculatedOdds = double.parse((o1 * o2 * 0.4).clamp(1.5, 99.9).toStringAsFixed(1));
+    final odds = _liveOdds['EXACTA:$dog1-$dog2'] ?? 1.5;
 
     _currentTicketPlays.add(Bet(
       dog1: dog1,
       dog2: dog2,
       amount: amount,
-      odds: calculatedOdds,
+      odds: odds,
     ));
   }
 
   void _addCalculatedTrifectaPlay(int dog1, int dog2, int dog3, double amount) {
-    final o1 = _currentOdds.odds[dog1 - 1];
-    final o2 = _currentOdds.odds[dog2 - 1];
-    final o3 = _currentOdds.odds[dog3 - 1];
-    final calculatedOdds = double.parse((o1 * o2 * o3 * 0.05).clamp(1.5, 99.9).toStringAsFixed(1));
+    final odds = _liveOdds['TRIFECTA:$dog1-$dog2-$dog3'] ?? 1.5;
 
     _currentTicketPlays.add(Bet(
       dog1: dog1,
       dog2: dog2,
       dog3: dog3,
       amount: amount,
-      odds: calculatedOdds,
+      odds: odds,
     ));
   }
 
   void _addSinglePlay(int dog, double amount) {
-    final o = _currentOdds.odds[dog - 1];
-    final calculatedOdds = double.parse(o.clamp(1.5, 99.9).toStringAsFixed(1));
+    final odds = _liveOdds['WINNER:$dog'] ?? 1.5;
 
     _currentTicketPlays.add(Bet(
       dog1: dog,
       dog2: null,
       amount: amount,
-      odds: calculatedOdds,
+      odds: odds,
     ));
   }
 
@@ -389,17 +448,40 @@ class PosState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Busca un ticket por su ID ("T-1000") o por su número (1000)
-  Ticket? findTicketByNumber(String query) {
-    final trimmed = query.trim();
-    if (trimmed.isEmpty) return null;
-    for (final ticket in _salesHistory) {
-      if (ticket.id.toUpperCase() == trimmed.toUpperCase() ||
-          ticket.ticketNumber.toString() == trimmed) {
-        return ticket;
-      }
+  // Convierte una jugada local en el detalle que espera POST /tickets
+  Map<String, String> _betToDetail(Bet b) {
+    if (b.dog3 != null) {
+      return {
+        'betType': 'TRIFECTA',
+        'selection': '${b.dog1}-${b.dog2}-${b.dog3}',
+        'amount': b.amount.toStringAsFixed(2),
+      };
+    } else if (b.dog2 != null) {
+      return {
+        'betType': 'EXACTA',
+        'selection': '${b.dog1}-${b.dog2}',
+        'amount': b.amount.toStringAsFixed(2),
+      };
+    } else {
+      return {
+        'betType': 'WINNER',
+        'selection': '${b.dog1}',
+        'amount': b.amount.toStringAsFixed(2),
+      };
     }
-    return null;
+  }
+
+  // Busca un ticket por su número en el backend
+  Future<Ticket?> findTicketByNumber(String query) async {
+    final trimmed = query.trim();
+    final ticketNumber = int.tryParse(trimmed);
+    if (ticketNumber == null) return null;
+    try {
+      final json = await _api.getTicketByNumber(ticketNumber);
+      return _ticketFromJson(json);
+    } catch (_) {
+      return null;
+    }
   }
 
   // Recarga las jugadas de un ticket (perros, monto y cuotas) al ticket actual
@@ -436,41 +518,143 @@ class PosState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void printTicket() {
+  // Crea el ticket en el backend. Devuelve null si todo salió bien,
+  // o un mensaje de error para mostrar al operador.
+  Future<String?> printTicket() async {
     if (_currentTicketPlays.isEmpty &&
         _hasAnySelection &&
         _currentBetAmount > 0) {
       addPlayToTicket();
     }
 
-    if (_currentTicketPlays.isNotEmpty) {
-      final now = DateTime.now();
-      final dateStr = "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} "
-          "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
-      
-      double totalAmount = 0;
-      for (var play in _currentTicketPlays) {
-        totalAmount += play.amount;
-      }
+    if (_currentTicketPlays.isEmpty) return null;
 
-      final int ticketNum = 1000 + _salesHistory.length;
+    final raceId = _currentRaceId;
+    if (raceId == null) {
+      return 'No hay una carrera activa para crear el ticket.';
+    }
 
-      final ticket = Ticket(
-        id: "T-$ticketNum",
-        ticketNumber: ticketNum,
-        dateTime: dateStr,
-        plays: List.from(_currentTicketPlays),
-        amount: totalAmount,
-        investment: totalAmount,
-        pay: 0.0,
-        balance: -totalAmount,
-        game: "Racing Dogs",
-        status: TicketStatus.approved,
+    try {
+      await _api.createTicket(
+        raceId: raceId,
+        details: _currentTicketPlays.map(_betToDetail).toList(),
       );
-
-      _salesHistory.insert(0, ticket);
       _currentTicketPlays.clear();
       notifyListeners();
+      await _refreshSalesHistory();
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } catch (_) {
+      return 'No se pudo conectar con el servidor';
+    }
+  }
+
+  Future<void> _refreshSalesHistory() async {
+    try {
+      final tickets = await _api.getTickets();
+      _salesHistory = tickets.map((t) => _ticketFromJson(t as Map<String, dynamic>)).toList();
+      notifyListeners();
+    } catch (_) {
+      // Mantiene el historial anterior si falla la actualización
+    }
+  }
+
+  Future<void> _refreshResultsHistory() async {
+    try {
+      final races = await _api.getRaceHistory(limit: 13);
+      _resultsHistory = races.map((race) {
+        final parts = (race['resultado'] as String).split('-');
+        return RaceResult(
+          raceNumber: (race['numero'] as num).toInt(),
+          winner1: int.parse(parts[0]),
+          winner2: int.parse(parts[1]),
+          bonus: '',
+        );
+      }).toList();
+      notifyListeners();
+    } catch (_) {
+      // Mantiene el historial anterior si falla la actualización
+    }
+  }
+
+  Future<void> _refreshOddsHistory() async {
+    try {
+      final races = await _api.getRaceHistory(limit: 13);
+      final list = <RaceOdds>[];
+      for (final race in races) {
+        final oddsRows = await _api.getRaceOdds(race['id'] as String);
+        final odds = List<double>.filled(6, 1.5);
+        for (final row in oddsRows) {
+          if (row['betType'] == 'WINNER') {
+            final selection = int.tryParse(row['selection'] as String);
+            if (selection != null && selection >= 1 && selection <= 6) {
+              odds[selection - 1] = double.parse(row['odds'].toString());
+            }
+          }
+        }
+        list.add(RaceOdds(raceNumber: (race['numero'] as num).toInt(), odds: odds));
+      }
+      _oddsHistoryList = list;
+      notifyListeners();
+    } catch (_) {
+      // Mantiene el historial anterior si falla la actualización
+    }
+  }
+
+  Ticket _ticketFromJson(Map<String, dynamic> json) {
+    final details = json['details'] as List<dynamic>? ?? [];
+    final plays = details.map((d) {
+      final betType = d['betType'] as String;
+      final parts = (d['selection'] as String).split('-').map(int.parse).toList();
+      final amount = double.parse(d['amount'].toString());
+      final odds = double.parse(d['odds'].toString());
+      switch (betType) {
+        case 'TRIFECTA':
+          return Bet(dog1: parts[0], dog2: parts[1], dog3: parts[2], amount: amount, odds: odds);
+        case 'EXACTA':
+          return Bet(dog1: parts[0], dog2: parts[1], amount: amount, odds: odds);
+        default:
+          return Bet(dog1: parts[0], amount: amount, odds: odds);
+      }
+    }).toList();
+
+    final totalAmount = double.parse(json['totalAmount'].toString());
+    final prizeAmount = double.parse((json['prizeAmount'] ?? '0').toString());
+
+    final createdAt = DateTime.parse(json['createdAt'] as String).toLocal();
+    final dateStr = "${createdAt.day.toString().padLeft(2, '0')}/"
+        "${createdAt.month.toString().padLeft(2, '0')}/${createdAt.year} "
+        "${createdAt.hour.toString().padLeft(2, '0')}:"
+        "${createdAt.minute.toString().padLeft(2, '0')}:"
+        "${createdAt.second.toString().padLeft(2, '0')}";
+
+    return Ticket(
+      id: json['id'] as String,
+      ticketNumber: (json['ticketNumber'] as num).toInt(),
+      dateTime: dateStr,
+      plays: plays,
+      amount: totalAmount,
+      investment: totalAmount,
+      pay: prizeAmount,
+      balance: prizeAmount - totalAmount,
+      game: 'Racing Dogs',
+      status: _mapTicketStatus(json['status'] as String),
+    );
+  }
+
+  TicketStatus _mapTicketStatus(String status) {
+    switch (status) {
+      case 'WON':
+        return TicketStatus.winner;
+      case 'LOST':
+        return TicketStatus.loser;
+      case 'PAID':
+        return TicketStatus.paid;
+      case 'CANCELLED':
+        return TicketStatus.annulled;
+      default:
+        return TicketStatus.approved;
     }
   }
 

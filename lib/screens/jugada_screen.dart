@@ -76,8 +76,9 @@ class _JugadaScreenState extends State<JugadaScreen> {
   }
 
   // Busca el ticket escrito por el usuario y recarga sus jugadas
-  void _loadTicketById(PosState state) {
-    final ticket = state.findTicketByNumber(_repeatTicketController.text);
+  Future<void> _loadTicketById(PosState state) async {
+    final ticket = await state.findTicketByNumber(_repeatTicketController.text);
+    if (!mounted) return;
     if (ticket != null) {
       state.repeatTicket(ticket);
       _repeatTicketController.clear();
@@ -88,6 +89,26 @@ class _JugadaScreenState extends State<JugadaScreen> {
           content: Text('Ticket no encontrado'),
           duration: Duration(seconds: 2),
         ),
+      );
+    }
+  }
+
+  // Imprime el ticket actual contra el backend y muestra errores si los hay
+  Future<void> _handlePrintTicket(PosState state) async {
+    if (!state.isSalesOpen) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ventas cerradas para esta carrera'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+    final error = await state.printTicket();
+    if (!mounted) return;
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error), duration: const Duration(seconds: 3)),
       );
     }
   }
@@ -240,7 +261,9 @@ class _JugadaScreenState extends State<JugadaScreen> {
                                     width: 175,
                                     isSelected: isSelected,
                                     isDimmed: isDimmed,
-                                    onTap: () => state.selectDog1(dogNum),
+                                    onTap: state.isSalesOpen
+                                        ? () => state.selectDog1(dogNum)
+                                        : null,
                                   );
                                 }),
                               ),
@@ -284,7 +307,9 @@ class _JugadaScreenState extends State<JugadaScreen> {
                                     width: 175,
                                     isSelected: isSelected,
                                     isDimmed: isDimmed,
-                                    onTap: () => state.selectDog2(dogNum),
+                                    onTap: state.isSalesOpen
+                                        ? () => state.selectDog2(dogNum)
+                                        : null,
                                   );
                                 }),
                               ),
@@ -328,7 +353,9 @@ class _JugadaScreenState extends State<JugadaScreen> {
                                     width: 175,
                                     isSelected: isSelected,
                                     isDimmed: isDimmed,
-                                    onTap: () => state.selectDog3(dogNum),
+                                    onTap: state.isSalesOpen
+                                        ? () => state.selectDog3(dogNum)
+                                        : null,
                                   );
                                 }),
                               ),
@@ -346,13 +373,13 @@ class _JugadaScreenState extends State<JugadaScreen> {
                       Row(
                         children: [
                           ActionButton(
-                            onTap: state.playReverse,
+                            onTap: state.isSalesOpen ? state.playReverse : null,
                             semanticLabel: 'Jugada reversa: agrega también la combinación 2°/1°',
                             child: Image.asset('assets/resources/felchaarribaabajo.png'),
                           ),
                           const SizedBox(width: 20),
                           ActionButton(
-                            onTap: state.playAllCombinations,
+                            onTap: state.isSalesOpen ? state.playAllCombinations : null,
                             semanticLabel: 'Combina el perro de 1° lugar con todos los demás en 2°',
                             child: Image.asset('assets/resources/flechadelado.png'),
                           ),
@@ -362,13 +389,13 @@ class _JugadaScreenState extends State<JugadaScreen> {
                       Row(
                         children: [
                           ActionButton(
-                            onTap: state.playR,
+                            onTap: state.isSalesOpen ? state.playR : null,
                             semanticLabel: 'Jugada R: combina con todos los perros en ambos sentidos, total \$350',
                             child: Image.asset('assets/resources/imagen_r.png'),
                           ),
                           const SizedBox(width: 20),
                           ActionButton(
-                            onTap: state.playR2,
+                            onTap: state.isSalesOpen ? state.playR2 : null,
                             semanticLabel: 'Jugada R/2: igual que R pero a mitad de precio, total \$175',
                             child: Image.asset('assets/resources/imagen_r2.png'),
                           ),
@@ -537,13 +564,25 @@ class _JugadaScreenState extends State<JugadaScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        AmountButton(amount: 25, onTap: () => state.addBetAmount(25)),
+                        AmountButton(
+                          amount: 25,
+                          onTap: state.isSalesOpen ? () => state.addBetAmount(25) : () {},
+                        ),
                         const SizedBox(width: 20),
-                        AmountButton(amount: 50, onTap: () => state.addBetAmount(50)),
+                        AmountButton(
+                          amount: 50,
+                          onTap: state.isSalesOpen ? () => state.addBetAmount(50) : () {},
+                        ),
                         const SizedBox(width: 20),
-                        AmountButton(amount: 100, onTap: () => state.addBetAmount(100)),
+                        AmountButton(
+                          amount: 100,
+                          onTap: state.isSalesOpen ? () => state.addBetAmount(100) : () {},
+                        ),
                         const SizedBox(width: 20),
-                        AmountButton(amount: 200, onTap: () => state.addBetAmount(200)),
+                        AmountButton(
+                          amount: 200,
+                          onTap: state.isSalesOpen ? () => state.addBetAmount(200) : () {},
+                        ),
                         const SizedBox(width: 20),
                         _buildRepeatTicketBox(state),
                       ],
@@ -603,7 +642,7 @@ class _JugadaScreenState extends State<JugadaScreen> {
                           onEnter: (_) => setState(() => _isPrintHovered = true),
                           onExit: (_) => setState(() => _isPrintHovered = false),
                           child: GestureDetector(
-                            onTap: state.printTicket,
+                            onTap: () => _handlePrintTicket(state),
                             onTapDown: (_) => setState(() => _isPrintPressed = true),
                             onTapUp: (_) => setState(() => _isPrintPressed = false),
                             onTapCancel: () => setState(() => _isPrintPressed = false),
@@ -932,7 +971,7 @@ class _JugadaScreenState extends State<JugadaScreen> {
                           onExit: (_) => setState(() => _isPrintHovered = false),
                           child: GestureDetector(
                             onTap: () {
-                              state.printTicket();
+                              _handlePrintTicket(state);
                               setState(() {
                                 _isTicketOpen = false;
                               });
@@ -969,6 +1008,32 @@ class _JugadaScreenState extends State<JugadaScreen> {
             ),
           ),
         ),
+
+        // Aviso de ventas cerradas (carrera cerrada/en curso)
+        if (!state.isSalesOpen)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: IgnorePointer(
+              child: Container(
+                width: double.infinity,
+                color: const Color(0xFFD32F2F),
+                padding: const EdgeInsets.symmetric(vertical: 6.0),
+                alignment: Alignment.center,
+                child: const Text(
+                  'VENTAS CERRADAS PARA ESTA CARRERA',
+                  style: TextStyle(
+                    fontFamily: 'DinNextLtPro',
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
+                  ),
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }

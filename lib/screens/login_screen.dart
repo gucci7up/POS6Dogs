@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:pos/layouts/desktop_layout.dart';
 
 class LoginScreen extends StatefulWidget {
-  final VoidCallback onAccess;
+  /// Intenta iniciar sesión con el usuario (formato XXX-XXX-XXX-XXX) y la
+  /// contraseña indicados. Devuelve `null` si el acceso fue exitoso, o un
+  /// mensaje de error para mostrar al operador.
+  final Future<String?> Function(String username, String password) onLogin;
 
-  const LoginScreen({super.key, required this.onAccess});
+  const LoginScreen({super.key, required this.onLogin});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -12,18 +15,55 @@ class LoginScreen extends StatefulWidget {
 
 enum _ActiveField { account, password }
 
+const int _accountDigits = 12;
+
 class _LoginScreenState extends State<LoginScreen> {
   String _account = '';
   String _password = '';
   _ActiveField _active = _ActiveField.account;
+  bool _isLoading = false;
+  String? _error;
 
   void _typeDigit(String digit) {
     setState(() {
       if (_active == _ActiveField.account) {
-        _account += digit;
+        if (_account.length < _accountDigits) {
+          _account += digit;
+        }
       } else {
         _password += digit;
       }
+    });
+  }
+
+  String get _formattedAccount {
+    final buffer = StringBuffer();
+    for (int i = 0; i < _account.length; i++) {
+      if (i > 0 && i % 3 == 0) buffer.write('-');
+      buffer.write(_account[i]);
+    }
+    return buffer.toString();
+  }
+
+  Future<void> _handleAccess() async {
+    if (_account.length != _accountDigits || _password.isEmpty) {
+      setState(() {
+        _error = 'Complete el número de acceso (12 dígitos) y el PIN.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    final result = await widget.onLogin(_formattedAccount, _password);
+
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
+      _error = result;
     });
   }
 
@@ -119,7 +159,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               children: [
                                 Expanded(
                                   child: _LoginField(
-                                    text: _account,
+                                    text: _formattedAccount,
                                     isPassword: false,
                                     isActive: _active == _ActiveField.account,
                                     onTap: () => setState(
@@ -150,8 +190,21 @@ class _LoginScreenState extends State<LoginScreen> {
                                 _ClearButton(onTap: _clearPassword),
                               ],
                             ),
-                            const SizedBox(height: 56),
-                            _AccesoButton(onTap: widget.onAccess),
+                            const SizedBox(height: 16),
+                            if (_error != null)
+                              Text(
+                                _error!,
+                                style: const TextStyle(
+                                  color: Color(0xFFE57373),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            const SizedBox(height: 16),
+                            _AccesoButton(
+                              onTap: _isLoading ? null : _handleAccess,
+                              isLoading: _isLoading,
+                            ),
                           ],
                         ),
                       ),
@@ -302,9 +355,10 @@ class _ClearButtonState extends State<_ClearButton> {
 }
 
 class _AccesoButton extends StatefulWidget {
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final bool isLoading;
 
-  const _AccesoButton({required this.onTap});
+  const _AccesoButton({required this.onTap, this.isLoading = false});
 
   @override
   State<_AccesoButton> createState() => _AccesoButtonState();
@@ -355,15 +409,24 @@ class _AccesoButtonState extends State<_AccesoButton> {
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: const Color(0xFFD4AF37), width: 2),
                 ),
-                child: const Text(
-                  'ACCESO',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 6,
-                  ),
-                ),
+                child: widget.isLoading
+                    ? const SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3,
+                          color: Color(0xFFD4AF37),
+                        ),
+                      )
+                    : const Text(
+                        'ACCESO',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 6,
+                        ),
+                      ),
               ),
             ),
           ],

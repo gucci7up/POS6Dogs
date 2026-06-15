@@ -9,6 +9,7 @@ class MainLayout extends StatelessWidget {
   final int currentTabIndex;
   final ValueChanged<int> onTabChanged;
   final PosState state;
+  final VoidCallback onLogout;
   final Widget child;
 
   const MainLayout({
@@ -16,6 +17,7 @@ class MainLayout extends StatelessWidget {
     required this.currentTabIndex,
     required this.onTabChanged,
     required this.state,
+    required this.onLogout,
     required this.child,
   });
 
@@ -64,7 +66,7 @@ class MainLayout extends StatelessWidget {
                       ),
                       const Expanded(child: SizedBox(height: 90)),
                       // Right Panel (Settings)
-                      RightPanel(state: state),
+                      RightPanel(state: state, onLogout: onLogout),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -74,6 +76,8 @@ class MainLayout extends StatelessWidget {
                       RaceInfoPanel(
                         raceNumber: state.currentRace,
                         countdownSeconds: state.countdownSeconds,
+                        nextRaceStartLabel: state.nextRaceStartLabel,
+                        raceStatusLabel: state.raceStatusLabel,
                       ),
                       const Spacer(),
                     ],
