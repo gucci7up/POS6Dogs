@@ -4,7 +4,6 @@ import 'package:pos/state/pos_state.dart';
 
 class CuotasScreen extends StatefulWidget {
   final PosState state;
-
   const CuotasScreen({super.key, required this.state});
 
   @override
@@ -12,56 +11,249 @@ class CuotasScreen extends StatefulWidget {
 }
 
 class _CuotasScreenState extends State<CuotasScreen> {
-  // Hovers for the 3 print buttons
   final List<bool> _hovers = [false, false, false];
+
+  Color _dogColor(int dog) {
+    switch (dog) {
+      case 1: return const Color(0xFFE02020);
+      case 2: return const Color(0xFF2255CC);
+      case 3: return const Color(0xFFFFFFFF);
+      case 4: return const Color(0xFF444444);
+      case 5: return const Color(0xFFFF7A00);
+      case 6: return const Color(0xFFCCCCCC);
+      default: return Colors.grey;
+    }
+  }
+
+  Color _oddsTextColor(double odds) {
+    if (odds <= 0) return Colors.white24;
+    if (odds < 10) return const Color(0xFFFF6B35);
+    if (odds < 20) return const Color(0xFF5EE97A);
+    return Colors.white;
+  }
+
+  Widget _hBar(int dog) {
+    if (dog == 6) {
+      return Container(
+        height: 3,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFFFFFFFF),
+              Color(0xFF333333),
+              Color(0xFFFFFFFF),
+              Color(0xFF333333),
+              Color(0xFFFFFFFF),
+            ],
+            stops: [0.0, 0.25, 0.5, 0.75, 1.0],
+          ),
+        ),
+      );
+    }
+    return Container(height: 3, color: _dogColor(dog));
+  }
+
+  Widget _vBar(int dog) {
+    if (dog == 6) {
+      return Container(
+        width: 4,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFFFFFFF),
+              Color(0xFF333333),
+              Color(0xFFFFFFFF),
+              Color(0xFF333333),
+              Color(0xFFFFFFFF),
+            ],
+            stops: [0.0, 0.25, 0.5, 0.75, 1.0],
+          ),
+        ),
+      );
+    }
+    return Container(width: 4, color: _dogColor(dog));
+  }
+
+  Widget _buildCell(int dog1, int dog2) {
+    if (dog1 == dog2) {
+      return Container(
+        margin: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          color: Colors.black,
+          borderRadius: BorderRadius.circular(4),
+        ),
+      );
+    }
+    final odds = widget.state.getExactaOddsPair(dog1, dog2);
+    final text = odds > 0 ? odds.toStringAsFixed(2) : '—';
+    return Container(
+      margin: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.10),
+          width: 0.5,
+        ),
+      ),
+      child: Center(
+        child: Text(
+          text,
+          style: TextStyle(
+            fontFamily: 'DinNextLtPro',
+            color: _oddsTextColor(odds),
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final odds = widget.state.oddsHistory;
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 48.0, vertical: 16.0),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Left: Odds Table
+          // ── Matríz EXACTA ──────────────────────────────────────────────
           Expanded(
             flex: 3,
-            child: Column(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Table Header
-                Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF7E7E7E), // Gray header
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(4),
-                      topRight: Radius.circular(4),
-                    ),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 24.0),
-                  child: Row(
-                    children: [
-                      const Expanded(
-                        flex: 2,
-                        child: Text(
-                          'CARRERAS Nu.',
-                          style: TextStyle(
-                            fontFamily: 'DinNextLtPro',
-                            color: Colors.black,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
+                // Label "PRIMERO" rotado
+                SizedBox(
+                  width: 26,
+                  child: RotatedBox(
+                    quarterTurns: 3,
+                    child: Center(
+                      child: Text(
+                        'PRIMERO',
+                        style: TextStyle(
+                          fontFamily: 'DinNextLtPro',
+                          color: Colors.white54,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 3,
                         ),
                       ),
-                      // Dog button headers 1 to 6
-                      Expanded(
-                        flex: 6,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                // Contenido principal
+                Expanded(
+                  child: Column(
+                    children: [
+                      // Fila de cabecera: "EXACTA" + "SEGUNDO"
+                      SizedBox(
+                        height: 36,
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: List.generate(6, (index) {
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 82,
+                              child: Padding(
+                                padding: const EdgeInsets.only(left: 10),
+                                child: Text(
+                                  'EXACTA',
+                                  style: const TextStyle(
+                                    fontFamily: 'DinNextLtPro',
+                                    color: Color(0xFFD4AF37),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 2,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Container(
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  border: Border(
+                                    bottom: BorderSide(
+                                      color: Colors.white.withOpacity(0.15),
+                                    ),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'SEGUNDO',
+                                  style: TextStyle(
+                                    fontFamily: 'DinNextLtPro',
+                                    color: Colors.white54,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 4,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Cabeceras de columna: perros 1–6
+                      SizedBox(
+                        height: 64,
+                        child: Row(
+                          children: [
+                            const SizedBox(width: 82),
+                            ...List.generate(6, (i) {
+                              final dog = i + 1;
+                              return Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      DogButton(number: dog, height: 36),
+                                      const SizedBox(height: 4),
+                                      _hBar(dog),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
+                      // Grilla de datos: 6 filas
+                      Expanded(
+                        child: Column(
+                          children: List.generate(6, (rowIdx) {
+                            final dog1 = rowIdx + 1;
                             return Expanded(
-                              child: Center(
-                                child: DogButton(number: index + 1, height: 28),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  // Encabezado de fila: barra + perro
+                                  SizedBox(
+                                    width: 82,
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                                      children: [
+                                        _vBar(dog1),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Center(
+                                            child: DogButton(number: dog1, height: 44),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  // 6 celdas de cuota
+                                  ...List.generate(
+                                    6,
+                                    (colIdx) => Expanded(
+                                      child: _buildCell(dog1, colIdx + 1),
+                                    ),
+                                  ),
+                                ],
                               ),
                             );
                           }),
@@ -70,80 +262,11 @@ class _CuotasScreenState extends State<CuotasScreen> {
                     ],
                   ),
                 ),
-
-                // Table Rows
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: odds.length,
-                    itemBuilder: (context, index) {
-                      final item = odds[index];
-                      // Alternating rows
-                      final isEven = index % 2 == 0;
-                      final rowBg = isEven
-                          ? Colors.white.withOpacity(0.07)
-                          : Colors.white.withOpacity(0.03);
-
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: rowBg,
-                          border: Border(
-                            bottom: BorderSide(
-                              color: Colors.white.withOpacity(0.05),
-                              width: 1,
-                            ),
-                          ),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 24.0),
-                        child: Row(
-                          children: [
-                            // Race Number
-                            Expanded(
-                              flex: 2,
-                              child: Text(
-                                '${item.raceNumber}',
-                                style: const TextStyle(
-                                  fontFamily: 'DinNextLtPro',
-                                  color: Colors.white70,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-
-                            // Odds values
-                            Expanded(
-                              flex: 6,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: List.generate(6, (dogIndex) {
-                                  return Expanded(
-                                    child: Center(
-                                      child: Text(
-                                        item.odds[dogIndex].toStringAsFixed(1),
-                                        style: const TextStyle(
-                                          fontFamily: 'DinNextLtPro',
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                }),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
               ],
             ),
           ),
-          const SizedBox(width: 48),
-
-          // Right: Odds Print Buttons (Print 5, Print 10, Print 20)
+          const SizedBox(width: 24),
+          // ── Botones imprimir ────────────────────────────────────────────
           Expanded(
             flex: 1,
             child: Column(
@@ -152,10 +275,8 @@ class _CuotasScreenState extends State<CuotasScreen> {
                 final hoverBg = _hovers[index]
                     ? 'assets/resources/botonprinterclaro.png'
                     : 'assets/resources/botonprinter.png';
-
                 final printValues = [5, 10, 20];
                 final value = printValues[index];
-
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16.0),
                   child: MouseRegion(
@@ -182,7 +303,7 @@ class _CuotasScreenState extends State<CuotasScreen> {
                         ),
                         child: Center(
                           child: Padding(
-                            padding: const EdgeInsets.only(left: 45.0, bottom: 4.0), // Offset to the right of baked-in printer icon
+                            padding: const EdgeInsets.only(left: 45.0, bottom: 4.0),
                             child: Text(
                               '$value',
                               style: const TextStyle(

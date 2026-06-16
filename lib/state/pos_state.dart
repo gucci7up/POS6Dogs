@@ -336,6 +336,10 @@ class PosState extends ChangeNotifier {
     return _liveOdds['EXACTA:$dog-$other'] ?? 1.5;
   }
 
+  // Cuota exacta de un par específico (dog1 1°, dog2 2°)
+  double getExactaOddsPair(int dog1, int dog2) =>
+      _liveOdds['EXACTA:$dog1-$dog2'] ?? 0.0;
+
   // Cuota "TRIFECTA": cuota del trío combinado con los dos siguientes perros
   double getTrifectaOdds(int dog) {
     final next1 = dog % 6 + 1;
