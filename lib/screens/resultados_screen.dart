@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pos/widgets/dog_button.dart';
-import 'package:pos/widgets/action_button.dart';
 import 'package:pos/state/pos_state.dart';
+import 'package:pos/services/print_service.dart';
 
 class ResultadosScreen extends StatefulWidget {
   final PosState state;
@@ -13,8 +13,7 @@ class ResultadosScreen extends StatefulWidget {
 }
 
 class _ResultadosScreenState extends State<ResultadosScreen> {
-  // Hovers for the 3 print buttons
-  final List<bool> _hovers = [false, false, false];
+  bool _hoverPrint = false;
 
   @override
   Widget build(BuildContext context) {
@@ -170,46 +169,38 @@ class _ResultadosScreenState extends State<ResultadosScreen> {
           ),
           const SizedBox(width: 48),
 
-          // Right: Large Print Buttons
-          Expanded(
-            flex: 1,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(3, (index) {
-                final hoverBg = _hovers[index]
-                    ? 'assets/resources/botonprinterclaro.png'
-                    : 'assets/resources/botonprinter.png';
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16.0),
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    onEnter: (_) => setState(() => _hovers[index] = true),
-                    onExit: (_) => setState(() => _hovers[index] = false),
-                    child: GestureDetector(
-                      onTap: () {
-                        // Print action feedback
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Imprimiendo reporte de resultados ${index + 1}...'),
-                            duration: const Duration(seconds: 1),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        width: 200,
-                        height: 90,
-                        decoration: BoxDecoration(
-                          image: DecorationImage(
-                            image: AssetImage(hoverBg),
-                            fit: BoxFit.fill,
-                          ),
+          // Right: Print Button (resultados del día)
+          SizedBox(
+            width: 220,
+            child: Center(
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                onEnter: (_) => setState(() => _hoverPrint = true),
+                onExit: (_) => setState(() => _hoverPrint = false),
+                child: GestureDetector(
+                  onTap: () {
+                    PrintService.printResultados(
+                      widget.state.resultsHistory,
+                      widget.state.agencyName,
+                      widget.state.currentUser,
+                    );
+                  },
+                  child: Container(
+                    width: 200,
+                    height: 90,
+                    decoration: BoxDecoration(
+                      image: DecorationImage(
+                        image: AssetImage(
+                          _hoverPrint
+                              ? 'assets/resources/botonprinterclaro.png'
+                              : 'assets/resources/botonprinter.png',
                         ),
+                        fit: BoxFit.fill,
                       ),
                     ),
                   ),
-                );
-              }),
+                ),
+              ),
             ),
           ),
         ],

@@ -78,6 +78,8 @@ class MainLayout extends StatelessWidget {
                         countdownSeconds: state.countdownSeconds,
                         nextRaceStartLabel: state.nextRaceStartLabel,
                         raceStatusLabel: state.raceStatusLabel,
+                        x2Dog: state.x2Dog,
+                        jackpotAmount: state.jackpotAmount,
                       ),
                       const Spacer(),
                     ],

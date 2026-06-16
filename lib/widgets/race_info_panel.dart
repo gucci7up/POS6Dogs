@@ -5,6 +5,8 @@ class RaceInfoPanel extends StatelessWidget {
   final int countdownSeconds;
   final String nextRaceStartLabel;
   final String raceStatusLabel;
+  final int x2Dog;
+  final double jackpotAmount;
 
   const RaceInfoPanel({
     super.key,
@@ -12,11 +14,12 @@ class RaceInfoPanel extends StatelessWidget {
     required this.countdownSeconds,
     required this.nextRaceStartLabel,
     required this.raceStatusLabel,
+    this.x2Dog = 0,
+    this.jackpotAmount = 0.0,
   });
 
   @override
   Widget build(BuildContext context) {
-    // Calculate progress fraction for the red countdown bar
     final double progress = (countdownSeconds / 300.0).clamp(0.0, 1.0);
 
     return Container(
@@ -33,7 +36,7 @@ class RaceInfoPanel extends StatelessWidget {
                 'CARRERA',
                 style: TextStyle(
                   fontFamily: 'DinNextLtPro',
-                  color: Color(0xFF9E9E9E), // Gray text
+                  color: Color(0xFF9E9E9E),
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                 ),
@@ -79,7 +82,7 @@ class RaceInfoPanel extends StatelessWidget {
           ),
           const SizedBox(width: 35),
 
-          // Activo Time
+          // Activo / Status
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -88,7 +91,7 @@ class RaceInfoPanel extends StatelessWidget {
                 'ACTIVO',
                 style: TextStyle(
                   fontFamily: 'DinNextLtPro',
-                  color: Color(0xFFB0A261), // Gold color
+                  color: Color(0xFFB0A261),
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                 ),
@@ -98,7 +101,7 @@ class RaceInfoPanel extends StatelessWidget {
                 raceStatusLabel,
                 style: const TextStyle(
                   fontFamily: 'DinNextLtPro',
-                  color: Color(0xFFD4AF37), // Gold text
+                  color: Color(0xFFD4AF37),
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
@@ -146,7 +149,7 @@ class RaceInfoPanel extends StatelessWidget {
           ),
           const SizedBox(width: 15),
 
-          // Red Progress Bar container
+          // Red Progress Bar
           Container(
             width: 200,
             height: 6,
@@ -160,11 +163,11 @@ class RaceInfoPanel extends StatelessWidget {
                   widthFactor: progress,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: const Color(0xFFD32F2F), // Bright Red
+                      color: const Color(0xFFD32F2F),
                       borderRadius: BorderRadius.circular(3),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFD32F2F).withOpacity(0.5),
+                          color: const Color(0xFFD32F2F).withValues(alpha: 0.5),
                           blurRadius: 4,
                           spreadRadius: 1,
                         ),
@@ -175,6 +178,79 @@ class RaceInfoPanel extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(width: 24),
+
+          // Jackpot counter
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'JACKPOT',
+                style: TextStyle(
+                  fontFamily: 'DinNextLtPro',
+                  color: Color(0xFFB0A261),
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '\$${jackpotAmount.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontFamily: 'DinNextLtPro',
+                  color: Color(0xFFD4AF37),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+
+          // X2 badge — solo visible cuando la carrera está cerrada/corriendo
+          if (x2Dog > 0) ...[
+            const SizedBox(width: 20),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF6B35),
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0xFFFF6B35),
+                    blurRadius: 8,
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'X2',
+                    style: TextStyle(
+                      fontFamily: 'DinNextLtPro',
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Perro $x2Dog',
+                    style: const TextStyle(
+                      fontFamily: 'DinNextLtPro',
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

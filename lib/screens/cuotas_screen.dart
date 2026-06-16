@@ -11,8 +11,6 @@ class CuotasScreen extends StatefulWidget {
 }
 
 class _CuotasScreenState extends State<CuotasScreen> {
-  final List<bool> _hovers = [false, false, false];
-
   Color _dogColor(int dog) {
     switch (dog) {
       case 1: return const Color(0xFFE02020);
@@ -121,7 +119,6 @@ class _CuotasScreenState extends State<CuotasScreen> {
         children: [
           // ── Matríz EXACTA ──────────────────────────────────────────────
           Expanded(
-            flex: 3,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -263,64 +260,6 @@ class _CuotasScreenState extends State<CuotasScreen> {
                   ),
                 ),
               ],
-            ),
-          ),
-          const SizedBox(width: 24),
-          // ── Botones imprimir ────────────────────────────────────────────
-          Expanded(
-            flex: 1,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(3, (index) {
-                final hoverBg = _hovers[index]
-                    ? 'assets/resources/botonprinterclaro.png'
-                    : 'assets/resources/botonprinter.png';
-                final printValues = [5, 10, 20];
-                final value = printValues[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16.0),
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    onEnter: (_) => setState(() => _hovers[index] = true),
-                    onExit: (_) => setState(() => _hovers[index] = false),
-                    child: GestureDetector(
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Imprimiendo $value cuotas...'),
-                            duration: const Duration(seconds: 1),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        width: 210,
-                        height: 90,
-                        decoration: BoxDecoration(
-                          image: DecorationImage(
-                            image: AssetImage(hoverBg),
-                            fit: BoxFit.fill,
-                          ),
-                        ),
-                        child: Center(
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 45.0, bottom: 4.0),
-                            child: Text(
-                              '$value',
-                              style: const TextStyle(
-                                fontFamily: 'DinNextLtPro',
-                                color: Colors.black87,
-                                fontSize: 34,
-                                fontWeight: FontWeight.bold,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }),
             ),
           ),
         ],

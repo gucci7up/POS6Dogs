@@ -50,6 +50,9 @@ class Ticket {
     required this.game,
     required this.status,
   });
+
+  double get potentialPrize =>
+      plays.fold(0.0, (sum, b) => sum + b.amount * b.odds);
 }
 
 class RaceResult {
@@ -191,6 +194,14 @@ class PosState extends ChangeNotifier {
   // Cuotas en vivo de la carrera actual, indexadas como "WINNER:3", "EXACTA:1-2", "TRIFECTA:1-2-3"
   Map<String, double> _liveOdds = {};
 
+  // X2: perro con cuota doble esta carrera (0 = ninguno), se anuncia al cerrar la venta
+  int _x2Dog = 0;
+  int get x2Dog => _x2Dog;
+
+  // Jackpot: monto acumulado en el pozo (en vivo desde el backend)
+  double _jackpotAmount = 0.0;
+  double get jackpotAmount => _jackpotAmount;
+
   Timer? _timer;
 
   Future<void> _refreshRaceStatus() async {
@@ -212,13 +223,19 @@ class PosState extends ChangeNotifier {
               .add(const Duration(seconds: _postSaleSeconds));
         }
 
+        // X2: se asigna al cerrar la carrera; 0 = sin X2 durante OPEN
+        final x2Dog = (currentRaceJson['x2Dog'] as num? ?? 0).toInt();
+        if (x2Dog != _x2Dog) _x2Dog = x2Dog;
+
         final newRaceId = currentRaceJson['id'] as String?;
         if (newRaceId != _currentRaceId) {
           final hadPreviousRace = _currentRaceId != null;
           _currentRaceId = newRaceId;
+          _x2Dog = 0; // reset X2 al cambiar de carrera
           if (hadPreviousRace) {
             unawaited(_refreshResultsHistory());
             unawaited(_refreshOddsHistory());
+            unawaited(_refreshSalesHistory());
           }
           unawaited(_refreshLiveOdds());
         }
@@ -229,6 +246,13 @@ class PosState extends ChangeNotifier {
           _currentTicketPlays.clear();
         }
       }
+
+      // Jackpot: actualizar monto acumulado desde el status global
+      final jackpotRaw = status['jackpotAmount'];
+      if (jackpotRaw != null) {
+        _jackpotAmount = double.tryParse(jackpotRaw.toString()) ?? _jackpotAmount;
+      }
+
       notifyListeners();
     } catch (_) {
       _isServerOnline = false;
@@ -327,13 +351,16 @@ class PosState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Cuota "GANAR": cuota del perro solo
-  double getGanarOdds(int dog) => _liveOdds['WINNER:$dog'] ?? 1.5;
+  // Cuota "GANAR": cuota del perro solo. Si es el perro X2, se duplica al liquidar.
+  double getGanarOdds(int dog) {
+    final base = _liveOdds['WINNER:$dog'] ?? 1.5;
+    return (_x2Dog > 0 && dog == _x2Dog) ? base * 2.0 : base;
+  }
 
   // Cuota "EXACTA": cuota del palé combinado con el siguiente perro
   double getExactaOdds(int dog) {
     final other = dog % 6 + 1;
-    return _liveOdds['EXACTA:$dog-$other'] ?? 1.5;
+    return getGanarOdds(dog) + getGanarOdds(other);
   }
 
   // Cuota exacta de un par específico (dog1 1°, dog2 2°)
@@ -344,11 +371,11 @@ class PosState extends ChangeNotifier {
   double getTrifectaOdds(int dog) {
     final next1 = dog % 6 + 1;
     final next2 = next1 % 6 + 1;
-    return _liveOdds['TRIFECTA:$dog-$next1-$next2'] ?? 1.5;
+    return getGanarOdds(dog) + getGanarOdds(next1) + getGanarOdds(next2);
   }
 
   void _addCalculatedPlay(int dog1, int dog2, double amount) {
-    final odds = _liveOdds['EXACTA:$dog1-$dog2'] ?? 1.5;
+    final odds = getGanarOdds(dog1) + getGanarOdds(dog2);
 
     _currentTicketPlays.add(Bet(
       dog1: dog1,
@@ -359,7 +386,7 @@ class PosState extends ChangeNotifier {
   }
 
   void _addCalculatedTrifectaPlay(int dog1, int dog2, int dog3, double amount) {
-    final odds = _liveOdds['TRIFECTA:$dog1-$dog2-$dog3'] ?? 1.5;
+    final odds = getGanarOdds(dog1) + getGanarOdds(dog2) + getGanarOdds(dog3);
 
     _currentTicketPlays.add(Bet(
       dog1: dog1,
@@ -571,12 +598,15 @@ class PosState extends ChangeNotifier {
       final races = await _api.getRaceHistory(limit: 13);
       _resultsHistory = races.map((race) {
         final parts = (race['resultado'] as String).split('-');
+        final jackpotWon = double.tryParse((race['jackpotWon'] ?? '0').toString()) ?? 0;
+        final bonusLabel = (race['bonusLabel'] as String? ?? '');
+        final bonus = jackpotWon > 0 ? 'JACKPOT' : bonusLabel;
         return RaceResult(
           raceNumber: (race['numero'] as num).toInt(),
           winner1: int.parse(parts[0]),
           winner2: int.parse(parts[1]),
           winner3: parts.length > 2 ? int.parse(parts[2]) : 0,
-          bonus: '',
+          bonus: bonus,
         );
       }).toList();
       notifyListeners();

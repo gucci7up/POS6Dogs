@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pos/state/pos_state.dart';
+import 'package:pos/services/print_service.dart';
 
 class VentasScreen extends StatefulWidget {
   final PosState state;
@@ -12,6 +13,7 @@ class VentasScreen extends StatefulWidget {
 
 class _VentasScreenState extends State<VentasScreen> {
   bool _isBalanceHovered = false;
+  bool _isPrinterHovered = false;
 
   @override
   Widget build(BuildContext context) {
@@ -153,10 +155,7 @@ class _VentasScreenState extends State<VentasScreen> {
                                       flex: 1,
                                       child: Align(
                                         alignment: Alignment.centerRight,
-                                        child: Text(
-                                          ticket.pay.toStringAsFixed(2),
-                                          style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
-                                        ),
+                                        child: _buildPagarCell(ticket),
                                       ),
                                     ),
                                     // Balance
@@ -237,7 +236,42 @@ class _VentasScreenState extends State<VentasScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 45),
+              const SizedBox(width: 16),
+
+              // Print: Ventas del día
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                onEnter: (_) => setState(() => _isPrinterHovered = true),
+                onExit: (_) => setState(() => _isPrinterHovered = false),
+                child: GestureDetector(
+                  onTap: () {
+                    PrintService.printVentas(
+                      state.salesHistory,
+                      agencyName: state.agencyName,
+                      cashier: state.currentUser,
+                      totalMonto: state.totalMonto,
+                      totalInversion: state.totalInversion,
+                      totalPagar: state.totalPagar,
+                      totalBalance: state.totalBalance,
+                    );
+                  },
+                  child: Container(
+                    width: 200,
+                    height: 90,
+                    decoration: BoxDecoration(
+                      image: DecorationImage(
+                        image: AssetImage(
+                          _isPrinterHovered
+                              ? 'assets/resources/botonprinterclaro.png'
+                              : 'assets/resources/botonprinter.png',
+                        ),
+                        fit: BoxFit.fill,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
 
               // Right: Large Yellow BALANCE Button
               MouseRegion(
@@ -288,6 +322,27 @@ class _VentasScreenState extends State<VentasScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildPagarCell(Ticket ticket) {
+    switch (ticket.status) {
+      case TicketStatus.winner:
+      case TicketStatus.paid:
+        return Text(
+          ticket.pay.toStringAsFixed(2),
+          style: const TextStyle(fontFamily: 'DinNextLtPro', color: Color(0xFF5EE97A), fontSize: 14, fontWeight: FontWeight.bold),
+        );
+      case TicketStatus.approved:
+        return Text(
+          ticket.potentialPrize.toStringAsFixed(2),
+          style: const TextStyle(fontFamily: 'DinNextLtPro', color: Color(0xFFD4AF37), fontSize: 14, fontWeight: FontWeight.bold),
+        );
+      default:
+        return Text(
+          '—',
+          style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white.withOpacity(0.3), fontSize: 14),
+        );
+    }
   }
 
   Widget _buildSummaryItem(String label, String value) {
