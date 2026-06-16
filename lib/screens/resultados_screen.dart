@@ -55,10 +55,10 @@ class _ResultadosScreenState extends State<ResultadosScreen> {
                         ),
                       ),
                       Expanded(
-                        flex: 3,
+                        flex: 4,
                         child: Center(
                           child: Text(
-                            'RESULTADO',
+                            'TRIFECTA',
                             style: TextStyle(
                               fontFamily: 'DinNextLtPro',
                               color: Colors.black,
@@ -126,15 +126,18 @@ class _ResultadosScreenState extends State<ResultadosScreen> {
                               ),
                             ),
 
-                            // Winner Dogs side-by-side
+                            // Trifecta: 3 perros
                             Expanded(
-                              flex: 3,
+                              flex: 4,
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   DogButton(number: item.winner1, height: 36),
                                   const SizedBox(width: 8),
                                   DogButton(number: item.winner2, height: 36),
+                                  const SizedBox(width: 8),
+                                  if (item.winner3 > 0)
+                                    DogButton(number: item.winner3, height: 36),
                                 ],
                               ),
                             ),

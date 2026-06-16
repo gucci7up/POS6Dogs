@@ -56,12 +56,14 @@ class RaceResult {
   final int raceNumber;
   final int winner1;
   final int winner2;
+  final int winner3;
   final String bonus;
 
   RaceResult({
     required this.raceNumber,
     required this.winner1,
     required this.winner2,
+    required this.winner3,
     required this.bonus,
   });
 }
@@ -569,6 +571,7 @@ class PosState extends ChangeNotifier {
           raceNumber: (race['numero'] as num).toInt(),
           winner1: int.parse(parts[0]),
           winner2: int.parse(parts[1]),
+          winner3: parts.length > 2 ? int.parse(parts[2]) : 0,
           bonus: '',
         );
       }).toList();
