@@ -117,7 +117,7 @@ class _JugadaScreenState extends State<JugadaScreen> {
   }
 
   void _showTicketQrDialog(String ticketId, int ticketNumber) {
-    const baseUrl = 'https://display.mbsport.lat/ticket.html?id=';
+    const baseUrl = 'https://tickets6.mbsport.lat/?id=';
     final qrData = '$baseUrl$ticketId';
 
     showDialog(
