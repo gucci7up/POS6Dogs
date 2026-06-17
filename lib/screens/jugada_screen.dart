@@ -3,6 +3,7 @@ import 'package:pos/widgets/dog_odds_card.dart';
 import 'package:pos/widgets/action_button.dart';
 import 'package:pos/widgets/amount_button.dart';
 import 'package:pos/state/pos_state.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 class JugadaScreen extends StatefulWidget {
   final PosState state;
@@ -93,7 +94,7 @@ class _JugadaScreenState extends State<JugadaScreen> {
     }
   }
 
-  // Imprime el ticket actual contra el backend y muestra errores si los hay
+  // Imprime el ticket actual contra el backend y muestra QR o error
   Future<void> _handlePrintTicket(PosState state) async {
     if (!state.isSalesOpen) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -104,13 +105,120 @@ class _JugadaScreenState extends State<JugadaScreen> {
       );
       return;
     }
-    final error = await state.printTicket();
+    final result = await state.printTicket();
     if (!mounted) return;
-    if (error != null) {
+    if (result.error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error), duration: const Duration(seconds: 3)),
+        SnackBar(content: Text(result.error!), duration: const Duration(seconds: 3)),
       );
+    } else if (result.ticketId != null) {
+      _showTicketQrDialog(result.ticketId!, result.ticketNumber ?? 0);
     }
+  }
+
+  void _showTicketQrDialog(String ticketId, int ticketNumber) {
+    const baseUrl = 'https://display.mbsport.lat/ticket.html?id=';
+    final qrData = '$baseUrl$ticketId';
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => Dialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'TICKET CREADO',
+                style: TextStyle(
+                  fontFamily: 'DinNextLtPro',
+                  color: Color(0xFFD4AF37),
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'N° $ticketNumber',
+                style: const TextStyle(
+                  fontFamily: 'DinNextLtPro',
+                  color: Colors.white54,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFD4AF37).withValues(alpha: 0.3),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(10),
+                child: QrImageView(
+                  data: qrData,
+                  version: QrVersions.auto,
+                  size: 200,
+                  backgroundColor: Colors.white,
+                  eyeStyle: const QrEyeStyle(
+                    eyeShape: QrEyeShape.square,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                  dataModuleStyle: const QrDataModuleStyle(
+                    dataModuleShape: QrDataModuleShape.square,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'Escanea para revisar\ntu resultado',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'DinNextLtPro',
+                  color: Colors.white54,
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFD4AF37),
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text(
+                    'CERRAR',
+                    style: TextStyle(
+                      fontFamily: 'DinNextLtPro',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   // Cuadrito para escribir un N° de ticket y recargar esa jugada

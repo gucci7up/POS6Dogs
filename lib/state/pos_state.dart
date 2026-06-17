@@ -2,6 +2,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:pos/services/api_client.dart';
 
+class PrintResult {
+  final String? error;
+  final String? ticketId;
+  final int? ticketNumber;
+  const PrintResult({this.error, this.ticketId, this.ticketNumber});
+  bool get isSuccess => error == null;
+}
+
 class Bet {
   final int dog1;
   final int? dog2;
@@ -551,35 +559,38 @@ class PosState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Crea el ticket en el backend. Devuelve null si todo salió bien,
-  // o un mensaje de error para mostrar al operador.
-  Future<String?> printTicket() async {
+  // Crea el ticket en el backend. Devuelve PrintResult con el ID del ticket creado,
+  // o con un mensaje de error si algo falla.
+  Future<PrintResult> printTicket() async {
     if (_currentTicketPlays.isEmpty &&
         _hasAnySelection &&
         _currentBetAmount > 0) {
       addPlayToTicket();
     }
 
-    if (_currentTicketPlays.isEmpty) return null;
+    if (_currentTicketPlays.isEmpty) return const PrintResult();
 
     final raceId = _currentRaceId;
     if (raceId == null) {
-      return 'No hay una carrera activa para crear el ticket.';
+      return const PrintResult(error: 'No hay una carrera activa para crear el ticket.');
     }
 
     try {
-      await _api.createTicket(
+      final created = await _api.createTicket(
         raceId: raceId,
         details: _currentTicketPlays.map(_betToDetail).toList(),
       );
       _currentTicketPlays.clear();
       notifyListeners();
       await _refreshSalesHistory();
-      return null;
+      return PrintResult(
+        ticketId: created['id'] as String?,
+        ticketNumber: (created['ticketNumber'] as num?)?.toInt(),
+      );
     } on ApiException catch (e) {
-      return e.message;
+      return PrintResult(error: e.message);
     } catch (_) {
-      return 'No se pudo conectar con el servidor';
+      return const PrintResult(error: 'No se pudo conectar con el servidor');
     }
   }
 

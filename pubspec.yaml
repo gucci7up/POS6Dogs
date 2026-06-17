@@ -38,6 +38,7 @@ dependencies:
   http: ^1.2.2
   pdf: ^3.11.1
   printing: ^5.13.2
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:

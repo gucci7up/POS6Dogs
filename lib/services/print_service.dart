@@ -295,6 +295,102 @@ class PrintService {
     await Printing.layoutPdf(onLayout: (_) => pdf.save());
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // RECIBO DE TICKET INDIVIDUAL
+  // ══════════════════════════════════════════════════════════════════════════
+
+  static Future<void> printTicketReceipt({
+    required Ticket ticket,
+    required String agencyName,
+    required String cashier,
+    String? ticketId,
+  }) async {
+    final pdf = pw.Document(title: 'Ticket #${ticket.ticketNumber}');
+
+    final qrUrl = ticketId != null
+        ? 'https://display.mbsport.lat/ticket.html?id=$ticketId'
+        : null;
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: _fmt,
+        build: (context) => pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            ..._header('TICKET DE APUESTA', agencyName, cashier),
+
+            _infoRow('Ticket N°', '#${ticket.ticketNumber}'),
+            pw.SizedBox(height: 4),
+            _hr(),
+
+            // Jugadas
+            pw.Text('JUGADAS', style: _bold(size: 8)),
+            pw.SizedBox(height: 4),
+            ...ticket.plays.map((play) {
+              String sel;
+              if (play.dog3 != null) {
+                sel = '${play.dog1}-${play.dog2}-${play.dog3}';
+              } else if (play.dog2 != null) {
+                sel = '${play.dog1}-${play.dog2}';
+              } else {
+                sel = '${play.dog1}';
+              }
+              return pw.Padding(
+                padding: const pw.EdgeInsets.symmetric(vertical: 2),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(sel, style: _bold(size: 9)),
+                    pw.Text(
+                      '\$${_money(play.amount)} × ${play.odds.toStringAsFixed(2)}',
+                      style: _reg(size: 8),
+                    ),
+                  ],
+                ),
+              );
+            }),
+            _hr(0.3),
+
+            pw.SizedBox(height: 4),
+            _summaryRow('Total apostado', '\$${_money(ticket.amount)}', highlight: true),
+            pw.SizedBox(height: 2),
+            _summaryRow('Premio potencial', '\$${_money(ticket.potentialPrize)}'),
+            pw.SizedBox(height: 4),
+            _hr(),
+
+            // QR URL al pie
+            if (qrUrl != null) ...[
+              pw.SizedBox(height: 4),
+              pw.Center(
+                child: pw.Text(
+                  'Verifica tu resultado en:',
+                  style: _reg(size: 7),
+                ),
+              ),
+              pw.Center(
+                child: pw.Text(
+                  'display.mbsport.lat/ticket.html',
+                  style: _bold(size: 7),
+                ),
+              ),
+              pw.Center(
+                child: pw.Text(
+                  'ID: $ticketId',
+                  style: _reg(size: 6),
+                ),
+              ),
+              pw.SizedBox(height: 2),
+            ],
+
+            ..._footer(),
+          ],
+        ),
+      ),
+    );
+
+    await Printing.layoutPdf(onLayout: (_) => pdf.save());
+  }
+
   // ── Helpers internos ────────────────────────────────────────────────────────
 
   static String _statusLabel(TicketStatus s) {
