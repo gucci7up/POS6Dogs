@@ -3,7 +3,6 @@ import 'package:pos/widgets/dog_odds_card.dart';
 import 'package:pos/widgets/action_button.dart';
 import 'package:pos/widgets/amount_button.dart';
 import 'package:pos/state/pos_state.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:pos/services/print_service.dart';
 
 class JugadaScreen extends StatefulWidget {
@@ -118,9 +117,6 @@ class _JugadaScreenState extends State<JugadaScreen> {
   }
 
   void _showTicketQrDialog(PosState state, String ticketId, int ticketNumber) {
-    const baseUrl = 'https://tickets6.mbsport.lat/?id=';
-    final qrData = '$baseUrl$ticketId';
-
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -128,10 +124,12 @@ class _JugadaScreenState extends State<JugadaScreen> {
         backgroundColor: const Color(0xFF1A1A1A),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 28),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              const Icon(Icons.check_circle, color: Color(0xFFD4AF37), size: 52),
+              const SizedBox(height: 12),
               const Text(
                 'TICKET CREADO',
                 style: TextStyle(
@@ -142,56 +140,16 @@ class _JugadaScreenState extends State<JugadaScreen> {
                   letterSpacing: 2,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               Text(
                 'N° $ticketNumber',
                 style: const TextStyle(
                   fontFamily: 'DinNextLtPro',
                   color: Colors.white54,
-                  fontSize: 14,
+                  fontSize: 15,
                 ),
               ),
-              const SizedBox(height: 20),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFD4AF37).withValues(alpha: 0.3),
-                      blurRadius: 20,
-                      spreadRadius: 2,
-                    ),
-                  ],
-                ),
-                padding: const EdgeInsets.all(10),
-                child: QrImageView(
-                  data: qrData,
-                  version: QrVersions.auto,
-                  size: 200,
-                  backgroundColor: Colors.white,
-                  eyeStyle: const QrEyeStyle(
-                    eyeShape: QrEyeShape.square,
-                    color: Color(0xFF1A1A1A),
-                  ),
-                  dataModuleStyle: const QrDataModuleStyle(
-                    dataModuleShape: QrDataModuleShape.square,
-                    color: Color(0xFF1A1A1A),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-              const Text(
-                'Escanea para revisar\ntu resultado',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'DinNextLtPro',
-                  color: Colors.white54,
-                  fontSize: 13,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               Row(
                 children: [
                   Expanded(

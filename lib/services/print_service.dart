@@ -308,7 +308,7 @@ class PrintService {
     final pdf = pw.Document(title: 'Ticket #${ticket.ticketNumber}');
 
     final qrUrl = ticketId != null
-        ? 'https://display.mbsport.lat/ticket.html?id=$ticketId'
+        ? 'https://tickets6.mbsport.lat/?id=$ticketId'
         : null;
 
     pdf.addPage(
@@ -358,25 +358,22 @@ class PrintService {
             pw.SizedBox(height: 4),
             _hr(),
 
-            // QR URL al pie
+            // QR al pie — escanear lleva directo al resultado del ticket
             if (qrUrl != null) ...[
+              pw.SizedBox(height: 8),
+              pw.Center(
+                child: pw.BarcodeWidget(
+                  barcode: pw.Barcode.qrCode(),
+                  data: qrUrl,
+                  width: 110,
+                  height: 110,
+                ),
+              ),
               pw.SizedBox(height: 4),
               pw.Center(
                 child: pw.Text(
-                  'Verifica tu resultado en:',
+                  'Escanea para ver tu resultado',
                   style: _reg(size: 7),
-                ),
-              ),
-              pw.Center(
-                child: pw.Text(
-                  'display.mbsport.lat/ticket.html',
-                  style: _bold(size: 7),
-                ),
-              ),
-              pw.Center(
-                child: pw.Text(
-                  'ID: $ticketId',
-                  style: _reg(size: 6),
                 ),
               ),
               pw.SizedBox(height: 2),
