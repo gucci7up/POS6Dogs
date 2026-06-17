@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:pos/state/pos_state.dart';
 
 class RightPanel extends StatefulWidget {
@@ -13,6 +14,15 @@ class RightPanel extends StatefulWidget {
 
 class _RightPanelState extends State<RightPanel> {
   bool _isCogHovered = false;
+  bool _isDisplayHovered = false;
+
+  Future<void> _openDisplay() async {
+    final agencyId = widget.state.agencyId;
+    final uri = Uri.parse('https://display6.mbsport.lat/?agencyId=$agencyId');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
 
   void _openSettingsDialog() {
     String selectedLanguage = widget.state.selectedLanguage;
@@ -273,7 +283,52 @@ class _RightPanelState extends State<RightPanel> {
               ),
             ],
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
+          // Botón Display
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            onEnter: (_) => setState(() => _isDisplayHovered = true),
+            onExit: (_) => setState(() => _isDisplayHovered = false),
+            child: GestureDetector(
+              onTap: _openDisplay,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _isDisplayHovered
+                      ? const Color(0xFFD4AF37)
+                      : const Color(0xFF1A1A1A),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: const Color(0xFFD4AF37),
+                    width: 1.2,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.tv,
+                      size: 16,
+                      color: _isDisplayHovered ? Colors.black : const Color(0xFFD4AF37),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'DISPLAY',
+                      style: TextStyle(
+                        fontFamily: 'DinNextLtPro',
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                        color: _isDisplayHovered ? Colors.black : const Color(0xFFD4AF37),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
           // Settings Gear Button
           MouseRegion(
             cursor: SystemMouseCursors.click,
