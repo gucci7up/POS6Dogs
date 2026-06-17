@@ -365,8 +365,8 @@ class PrintService {
                 child: pw.BarcodeWidget(
                   barcode: pw.Barcode.qrCode(),
                   data: qrUrl,
-                  width: 110,
-                  height: 110,
+                  width: 72,
+                  height: 72,
                 ),
               ),
               pw.SizedBox(height: 4),
