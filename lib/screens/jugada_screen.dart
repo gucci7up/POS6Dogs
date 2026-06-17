@@ -4,6 +4,7 @@ import 'package:pos/widgets/action_button.dart';
 import 'package:pos/widgets/amount_button.dart';
 import 'package:pos/state/pos_state.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:pos/services/print_service.dart';
 
 class JugadaScreen extends StatefulWidget {
   final PosState state;
@@ -112,11 +113,11 @@ class _JugadaScreenState extends State<JugadaScreen> {
         SnackBar(content: Text(result.error!), duration: const Duration(seconds: 3)),
       );
     } else if (result.ticketId != null) {
-      _showTicketQrDialog(result.ticketId!, result.ticketNumber ?? 0);
+      _showTicketQrDialog(state, result.ticketId!, result.ticketNumber ?? 0);
     }
   }
 
-  void _showTicketQrDialog(String ticketId, int ticketNumber) {
+  void _showTicketQrDialog(PosState state, String ticketId, int ticketNumber) {
     const baseUrl = 'https://tickets6.mbsport.lat/?id=';
     final qrData = '$baseUrl$ticketId';
 
@@ -191,28 +192,67 @@ class _JugadaScreenState extends State<JugadaScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFD4AF37),
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF444444)),
+                        foregroundColor: Colors.white54,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: const Text(
+                        'CERRAR',
+                        style: TextStyle(
+                          fontFamily: 'DinNextLtPro',
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
                     ),
                   ),
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: const Text(
-                    'CERRAR',
-                    style: TextStyle(
-                      fontFamily: 'DinNextLtPro',
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      letterSpacing: 1.5,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFD4AF37),
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: () {
+                        final ticket = state.salesHistory
+                            .where((t) => t.ticketNumber == ticketNumber)
+                            .firstOrNull;
+                        if (ticket != null) {
+                          PrintService.printTicketReceipt(
+                            ticket: ticket,
+                            agencyName: state.agencyName,
+                            cashier: state.currentUser,
+                            ticketId: ticketId,
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.print, size: 16),
+                      label: const Text(
+                        'IMPRIMIR',
+                        style: TextStyle(
+                          fontFamily: 'DinNextLtPro',
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
             ],
           ),
