@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:pos/layouts/desktop_layout.dart';
 
 class LoginScreen extends StatefulWidget {
-  /// Intenta iniciar sesión con el usuario (formato XXX-XXX-XXX-XXX) y la
-  /// contraseña indicados. Devuelve `null` si el acceso fue exitoso, o un
-  /// mensaje de error para mostrar al operador.
   final Future<String?> Function(String username, String password) onLogin;
 
-  const LoginScreen({super.key, required this.onLogin});
+  /// `true` cuando se muestra por inactividad (sesión bloqueada),
+  /// no como login inicial.
+  final bool isLocked;
+
+  const LoginScreen({super.key, required this.onLogin, this.isLocked = false});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -136,6 +137,33 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
+          // Banner de sesión bloqueada
+          if (widget.isLocked)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                color: const Color(0xFFB8860B).withOpacity(0.92),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.lock_clock, color: Colors.white, size: 22),
+                    SizedBox(width: 12),
+                    Text(
+                      'SESIÓN BLOQUEADA POR INACTIVIDAD — Vuelva a ingresar su PIN',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           // Contenido principal
           Padding(
             padding: const EdgeInsets.fromLTRB(90, 30, 90, 240),

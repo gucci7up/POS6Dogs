@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -69,11 +70,38 @@ class RootScreen extends StatefulWidget {
 class _RootScreenState extends State<RootScreen> {
   final ApiClient _apiClient = ApiClient();
   AuthResult? _auth;
+  bool _sessionLocked = false;
+  Timer? _inactivityTimer;
+
+  static const _inactivityTimeout = Duration(minutes: 5);
+
+  @override
+  void dispose() {
+    _inactivityTimer?.cancel();
+    super.dispose();
+  }
+
+  void _resetInactivityTimer() {
+    _inactivityTimer?.cancel();
+    if (_auth != null && !_sessionLocked) {
+      _inactivityTimer = Timer(_inactivityTimeout, _lockSession);
+    }
+  }
+
+  void _lockSession() {
+    if (!mounted) return;
+    _inactivityTimer?.cancel();
+    setState(() => _sessionLocked = true);
+  }
 
   Future<String?> _handleLogin(String username, String password) async {
     try {
       final auth = await _apiClient.login(username, password);
-      setState(() => _auth = auth);
+      setState(() {
+        _auth = auth;
+        _sessionLocked = false;
+      });
+      _resetInactivityTimer();
       return null;
     } on ApiException catch (e) {
       return e.message;
@@ -83,21 +111,43 @@ class _RootScreenState extends State<RootScreen> {
   }
 
   void _handleLogout() {
+    _inactivityTimer?.cancel();
     _apiClient.setToken(null);
-    setState(() => _auth = null);
+    setState(() {
+      _auth = null;
+      _sessionLocked = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = _auth;
+
+    // Sin sesión activa: pantalla de login pura
     if (auth == null) {
       return LoginScreen(onLogin: _handleLogin);
     }
-    return MainScreen(
-      key: ValueKey(auth.userId),
-      apiClient: _apiClient,
-      auth: auth,
-      onLogout: _handleLogout,
+
+    // Sesión activa: MainScreen siempre en el árbol (datos preservados).
+    // Cuando se bloquea, se superpone el LoginScreen como overlay.
+    return Listener(
+      onPointerDown: (_) => _resetInactivityTimer(),
+      onPointerMove: (_) => _resetInactivityTimer(),
+      child: Stack(
+        children: [
+          MainScreen(
+            key: ValueKey(auth.userId),
+            apiClient: _apiClient,
+            auth: auth,
+            onLogout: _handleLogout,
+          ),
+          if (_sessionLocked)
+            LoginScreen(
+              onLogin: _handleLogin,
+              isLocked: true,
+            ),
+        ],
+      ),
     );
   }
 }
