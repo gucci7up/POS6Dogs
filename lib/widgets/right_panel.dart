@@ -18,7 +18,7 @@ class _RightPanelState extends State<RightPanel> {
 
   Future<void> _openDisplay() async {
     final agencyId = widget.state.agencyId;
-    final uri = Uri.parse('https://display6.mbsport.lat/?agencyId=$agencyId');
+    final uri = Uri.parse('https://display.mbsport.lat/?agencyId=$agencyId');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
