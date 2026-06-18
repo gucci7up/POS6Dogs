@@ -195,7 +195,9 @@ class _JugadaScreenState extends State<JugadaScreen> {
                             agencyName: state.agencyName,
                             cashier: state.currentUser,
                             ticketId: ticketId,
+                            printerName: state.selectedPrinter,
                           );
+                          Navigator.of(ctx).pop();
                         }
                       },
                       icon: const Icon(Icons.print, size: 16),

@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -304,6 +305,7 @@ class PrintService {
     required String agencyName,
     required String cashier,
     String? ticketId,
+    String printerName = 'Impresora predeterminada',
   }) async {
     final pdf = pw.Document(title: 'Ticket #${ticket.ticketNumber}');
 
@@ -311,13 +313,35 @@ class PrintService {
         ? 'https://tickets6.mbsport.lat/?id=$ticketId'
         : null;
 
+    // Cargar logo desde assets
+    final logoBytes = await rootBundle.load('assets/resources/logo_principal.png');
+    final logoImage = pw.MemoryImage(logoBytes.buffer.asUint8List());
+
+    final now = DateTime.now();
+
     pdf.addPage(
       pw.Page(
         pageFormat: _fmt,
         build: (context) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            ..._header('TICKET DE APUESTA', agencyName, cashier),
+            // Logo en lugar de texto
+            pw.Center(
+              child: pw.Image(logoImage, width: 110, height: 55, fit: pw.BoxFit.contain),
+            ),
+            pw.SizedBox(height: 4),
+            pw.Center(child: pw.Text('Racing Dogs - Sistema POS', style: _reg(size: 8))),
+            pw.SizedBox(height: 6),
+            _hr(0.8),
+            pw.Center(child: pw.Text('TICKET DE APUESTA', style: _bold(size: 11))),
+            _hr(0.8),
+            pw.SizedBox(height: 4),
+            _infoRow('Fecha', _date(now)),
+            _infoRow('Hora', _time(now)),
+            _infoRow('Agencia', agencyName),
+            _infoRow('Cajero', cashier),
+            pw.SizedBox(height: 4),
+            _hr(),
 
             _infoRow('Ticket N°', '#${ticket.ticketNumber}'),
             pw.SizedBox(height: 4),
@@ -385,7 +409,23 @@ class PrintService {
       ),
     );
 
-    await Printing.layoutPdf(onLayout: (_) => pdf.save());
+    // Impresión directa — sin diálogo de sistema
+    final printers = await Printing.listPrinters();
+    Printer? target;
+    if (printerName != 'Impresora predeterminada') {
+      target = printers.where((p) => p.name.contains(printerName)).firstOrNull;
+    }
+    target ??= printers.where((p) => p.isDefault).firstOrNull ?? printers.firstOrNull;
+
+    if (target != null) {
+      await Printing.directPrintPdf(
+        printer: target,
+        onLayout: (_) async => await pdf.save(),
+      );
+    } else {
+      // Fallback: mostrar diálogo si no se encuentra ninguna impresora
+      await Printing.layoutPdf(onLayout: (_) => pdf.save());
+    }
   }
 
   // ── Helpers internos ────────────────────────────────────────────────────────
