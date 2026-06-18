@@ -325,12 +325,10 @@ class PrintService {
         build: (context) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            // Logo en lugar de texto
+            // Logo
             pw.Center(
-              child: pw.Image(logoImage, width: 110, height: 55, fit: pw.BoxFit.contain),
+              child: pw.Image(logoImage, width: 120, height: 60, fit: pw.BoxFit.contain),
             ),
-            pw.SizedBox(height: 4),
-            pw.Center(child: pw.Text('Racing Dogs - Sistema POS', style: _reg(size: 8))),
             pw.SizedBox(height: 6),
             _hr(0.8),
             pw.Center(child: pw.Text('TICKET DE APUESTA', style: _bold(size: 11))),

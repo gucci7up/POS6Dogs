@@ -94,7 +94,7 @@ class _JugadaScreenState extends State<JugadaScreen> {
     }
   }
 
-  // Imprime el ticket actual contra el backend y muestra QR o error
+  // Imprime el ticket directo — sin modal intermedio
   Future<void> _handlePrintTicket(PosState state) async {
     if (!state.isSalesOpen) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -111,114 +111,21 @@ class _JugadaScreenState extends State<JugadaScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(result.error!), duration: const Duration(seconds: 3)),
       );
-    } else if (result.ticketId != null) {
-      _showTicketQrDialog(state, result.ticketId!, result.ticketNumber ?? 0);
+      return;
     }
-  }
-
-  void _showTicketQrDialog(PosState state, String ticketId, int ticketNumber) {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.check_circle, color: Color(0xFFD4AF37), size: 52),
-              const SizedBox(height: 12),
-              const Text(
-                'TICKET CREADO',
-                style: TextStyle(
-                  fontFamily: 'DinNextLtPro',
-                  color: Color(0xFFD4AF37),
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'N° $ticketNumber',
-                style: const TextStyle(
-                  fontFamily: 'DinNextLtPro',
-                  color: Colors.white54,
-                  fontSize: 15,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFF444444)),
-                        foregroundColor: Colors.white54,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: () => Navigator.of(ctx).pop(),
-                      child: const Text(
-                        'CERRAR',
-                        style: TextStyle(
-                          fontFamily: 'DinNextLtPro',
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFD4AF37),
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: () {
-                        final ticket = state.salesHistory
-                            .where((t) => t.ticketNumber == ticketNumber)
-                            .firstOrNull;
-                        if (ticket != null) {
-                          PrintService.printTicketReceipt(
-                            ticket: ticket,
-                            agencyName: state.agencyName,
-                            cashier: state.currentUser,
-                            ticketId: ticketId,
-                            printerName: state.selectedPrinter,
-                          );
-                          Navigator.of(ctx).pop();
-                        }
-                      },
-                      icon: const Icon(Icons.print, size: 16),
-                      label: const Text(
-                        'IMPRIMIR',
-                        style: TextStyle(
-                          fontFamily: 'DinNextLtPro',
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    final ticketNumber = result.ticketNumber ?? 0;
+    final ticket = state.salesHistory
+        .where((t) => t.ticketNumber == ticketNumber)
+        .firstOrNull;
+    if (ticket != null) {
+      PrintService.printTicketReceipt(
+        ticket: ticket,
+        agencyName: state.agencyName,
+        cashier: state.currentUser,
+        ticketId: result.ticketId,
+        printerName: state.selectedPrinter,
+      );
+    }
   }
 
   // Cuadrito para escribir un N° de ticket y recargar esa jugada
