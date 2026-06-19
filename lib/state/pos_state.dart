@@ -1,6 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 import 'package:pos/services/api_client.dart';
+import 'package:pos/services/local_video_server.dart';
+import 'package:pos/services/video_sync_service.dart';
 
 class PrintResult {
   final String? error;
@@ -101,6 +105,74 @@ class PosState extends ChangeNotifier {
     unawaited(_refreshSalesHistory());
     unawaited(_refreshResultsHistory());
     unawaited(_refreshOddsHistory());
+    unawaited(_startLocalVideoServer());
+  }
+
+  // ── Servidor local de videos ──────────────────────────────────────────────
+
+  String? _videosDir;
+  String? get videosDir => _videosDir;
+
+  bool _localServerRunning = false;
+  bool get localServerRunning => _localServerRunning;
+
+  // Estado de sincronización
+  bool _syncing = false;
+  bool get isSyncing => _syncing;
+
+  int _syncDone = 0;
+  int _syncTotal = 0;
+  String _syncCurrent = '';
+
+  int get syncDone => _syncDone;
+  int get syncTotal => _syncTotal;
+  String get syncCurrent => _syncCurrent;
+
+  Future<void> _startLocalVideoServer() async {
+    try {
+      final appDir = await getApplicationSupportDirectory();
+      _videosDir = p.join(appDir.path, 'videos');
+
+      // Obtener clave AES del servidor (requiere JWT válido)
+      final keyData = await _api.getVideoEncryptionKey(_auth.accessToken);
+      if (keyData != null) {
+        LocalVideoServer.setKey(keyData['key']!, keyData['iv']!);
+      }
+
+      await LocalVideoServer.start(_videosDir!);
+      _localServerRunning = LocalVideoServer.hasKey;
+      notifyListeners();
+    } catch (_) {
+      _localServerRunning = false;
+    }
+  }
+
+  Future<SyncResult> syncVideos() async {
+    if (_syncing || _videosDir == null) {
+      throw Exception('Sincronización ya en curso o servidor no iniciado');
+    }
+    _syncing = true;
+    _syncDone = 0;
+    _syncTotal = 0;
+    _syncCurrent = '';
+    notifyListeners();
+
+    try {
+      final result = await VideoSyncService.sync(
+        accessToken: _auth.accessToken,
+        videosDir: _videosDir!,
+        onProgress: (done, total, current) {
+          _syncDone = done;
+          _syncTotal = total;
+          _syncCurrent = current;
+          notifyListeners();
+        },
+      );
+      return result;
+    } finally {
+      _syncing = false;
+      notifyListeners();
+    }
   }
 
   int _currentRace = 0;
@@ -165,6 +237,9 @@ class PosState extends ChangeNotifier {
   String _selectedPrinter = 'Impresora predeterminada';
   String get selectedPrinter => _selectedPrinter;
 
+  int _selectedPaperWidth = 80; // 58 o 80 mm
+  int get selectedPaperWidth => _selectedPaperWidth;
+
   void setLanguage(String language) {
     _selectedLanguage = language;
     notifyListeners();
@@ -172,6 +247,11 @@ class PosState extends ChangeNotifier {
 
   void setPrinter(String printer) {
     _selectedPrinter = printer;
+    notifyListeners();
+  }
+
+  void setPaperWidth(int mm) {
+    _selectedPaperWidth = mm;
     notifyListeners();
   }
 
@@ -231,8 +311,8 @@ class PosState extends ChangeNotifier {
               .add(const Duration(seconds: _postSaleSeconds));
         }
 
-        // X2: se asigna al cerrar la carrera; 0 = sin X2 durante OPEN
-        final x2Dog = (currentRaceJson['x2Dog'] as num? ?? 0).toInt();
+        // X2: viene en el top-level del status, no dentro de currentRace
+        final x2Dog = (status['x2Dog'] as num? ?? 0).toInt();
         if (x2Dog != _x2Dog) _x2Dog = x2Dog;
 
         final newRaceId = currentRaceJson['id'] as String?;
