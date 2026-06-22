@@ -9,6 +9,7 @@ import 'package:pos/screens/jugada_screen.dart';
 import 'package:pos/screens/resultados_screen.dart';
 import 'package:pos/screens/cuotas_screen.dart';
 import 'package:pos/screens/ventas_screen.dart';
+import 'package:pos/screens/premios_screen.dart';
 import 'package:pos/services/api_client.dart';
 import 'package:pos/state/pos_state.dart';
 
@@ -203,6 +204,9 @@ class _MainScreenState extends State<MainScreen> {
             break;
           case 3:
             activeScreen = VentasScreen(state: _state);
+            break;
+          case 4:
+            activeScreen = PremiosScreen(state: _state);
             break;
           default:
             activeScreen = JugadaScreen(state: _state);

@@ -224,6 +224,7 @@ class PosState extends ChangeNotifier {
     }
   }
 
+  String get authToken => _auth.accessToken;
   String get agencyId => _auth.agencyId ?? '-';
   String get agencyName => _auth.agencyName ?? _auth.agencyId ?? 'SIN AGENCIA';
   String get currentUser => _auth.username;
