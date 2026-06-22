@@ -85,9 +85,14 @@ class _VentasScreenState extends State<VentasScreen> {
                                   : Colors.white.withOpacity(0.03);
 
                               // Build plays summary string
-                              final playsStr = ticket.plays
-                                  .map((p) => '${p.dog2 != null ? '${p.dog1}-${p.dog2}' : '${p.dog1}'} (\$${p.amount.toInt()})')
-                                  .join(', ');
+                              final playsStr = ticket.plays.map((p) {
+                                final sel = p.dog3 != null
+                                    ? '${p.dog1}-${p.dog2}-${p.dog3}'
+                                    : p.dog2 != null
+                                        ? '${p.dog1}-${p.dog2}'
+                                        : '${p.dog1}';
+                                return '$sel (\$${p.amount.toInt()})';
+                              }).join(', ');
 
                               return Container(
                                 decoration: BoxDecoration(
@@ -253,6 +258,7 @@ class _VentasScreenState extends State<VentasScreen> {
                       totalInversion: state.totalInversion,
                       totalPagar: state.totalPagar,
                       totalBalance: state.totalBalance,
+                      paperWidthMm: state.selectedPaperWidth,
                     );
                   },
                   child: Container(
