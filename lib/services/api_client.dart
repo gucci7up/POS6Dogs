@@ -68,7 +68,7 @@ class ApiClient {
         response = await http.get(uri, headers: _headers);
         break;
       case 'POST':
-        response = await http.post(uri, headers: _headers, body: jsonEncode(body));
+        response = await http.post(uri, headers: _headers, body: body != null ? jsonEncode(body) : null);
         break;
       default:
         throw ArgumentError('Método no soportado: $method');
@@ -161,7 +161,7 @@ class ApiClient {
     return await _request('GET', '/tickets/pending-payment') as List<dynamic>;
   }
 
-  Future<Map<String, dynamic>> payTicket(String ticketId) async {
-    return await _request('POST', '/tickets/$ticketId/pay') as Map<String, dynamic>;
+  Future<void> payTicket(String ticketId) async {
+    await _request('POST', '/tickets/$ticketId/pay');
   }
 }
