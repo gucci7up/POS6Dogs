@@ -114,8 +114,7 @@ class _CuotasScreenState extends State<CuotasScreen> {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 48.0, vertical: 16.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Column(
         children: [
           // ── Matríz EXACTA ──────────────────────────────────────────────
           Expanded(
@@ -128,7 +127,7 @@ class _CuotasScreenState extends State<CuotasScreen> {
                   child: RotatedBox(
                     quarterTurns: 3,
                     child: Center(
-                      child: Text(
+                      child: const Text(
                         'PRIMERO',
                         style: TextStyle(
                           fontFamily: 'DinNextLtPro',
@@ -142,7 +141,6 @@ class _CuotasScreenState extends State<CuotasScreen> {
                   ),
                 ),
                 const SizedBox(width: 4),
-                // Contenido principal
                 Expanded(
                   child: Column(
                     children: [
@@ -156,9 +154,9 @@ class _CuotasScreenState extends State<CuotasScreen> {
                               width: 82,
                               child: Padding(
                                 padding: const EdgeInsets.only(left: 10),
-                                child: Text(
+                                child: const Text(
                                   'EXACTA',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontFamily: 'DinNextLtPro',
                                     color: Color(0xFFD4AF37),
                                     fontSize: 14,
@@ -173,9 +171,7 @@ class _CuotasScreenState extends State<CuotasScreen> {
                                 alignment: Alignment.center,
                                 decoration: BoxDecoration(
                                   border: Border(
-                                    bottom: BorderSide(
-                                      color: Colors.white.withOpacity(0.15),
-                                    ),
+                                    bottom: BorderSide(color: Colors.white.withOpacity(0.15)),
                                   ),
                                 ),
                                 child: const Text(
@@ -193,9 +189,9 @@ class _CuotasScreenState extends State<CuotasScreen> {
                           ],
                         ),
                       ),
-                      // Cabeceras de columna: perros 1–6
+                      // Cabeceras de columna
                       SizedBox(
-                        height: 64,
+                        height: 60,
                         child: Row(
                           children: [
                             const SizedBox(width: 82),
@@ -207,7 +203,7 @@ class _CuotasScreenState extends State<CuotasScreen> {
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      DogButton(number: dog, height: 36),
+                                      DogButton(number: dog, height: 34),
                                       const SizedBox(height: 4),
                                       _hBar(dog),
                                     ],
@@ -218,7 +214,7 @@ class _CuotasScreenState extends State<CuotasScreen> {
                           ],
                         ),
                       ),
-                      // Grilla de datos: 6 filas
+                      // Grilla de datos
                       Expanded(
                         child: Column(
                           children: List.generate(6, (rowIdx) {
@@ -227,7 +223,6 @@ class _CuotasScreenState extends State<CuotasScreen> {
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                  // Encabezado de fila: barra + perro
                                   SizedBox(
                                     width: 82,
                                     child: Row(
@@ -235,21 +230,11 @@ class _CuotasScreenState extends State<CuotasScreen> {
                                       children: [
                                         _vBar(dog1),
                                         const SizedBox(width: 6),
-                                        Expanded(
-                                          child: Center(
-                                            child: DogButton(number: dog1, height: 44),
-                                          ),
-                                        ),
+                                        Expanded(child: Center(child: DogButton(number: dog1, height: 40))),
                                       ],
                                     ),
                                   ),
-                                  // 6 celdas de cuota
-                                  ...List.generate(
-                                    6,
-                                    (colIdx) => Expanded(
-                                      child: _buildCell(dog1, colIdx + 1),
-                                    ),
-                                  ),
+                                  ...List.generate(6, (colIdx) => Expanded(child: _buildCell(dog1, colIdx + 1))),
                                 ],
                               ),
                             );
@@ -259,6 +244,72 @@ class _CuotasScreenState extends State<CuotasScreen> {
                     ],
                   ),
                 ),
+              ],
+            ),
+          ),
+
+          // ── Barra GANADOR ───────────────────────────────────────────────
+          const SizedBox(height: 12),
+          Container(
+            height: 100,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.04),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white.withOpacity(0.08)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Label GANADOR
+                SizedBox(
+                  width: 90,
+                  child: Center(
+                    child: const Text(
+                      'GANADOR',
+                      style: TextStyle(
+                        fontFamily: 'DinNextLtPro',
+                        color: Color(0xFFD4AF37),
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ),
+                ),
+                // 6 cards de perro + cuota ganador
+                ...List.generate(6, (i) {
+                  final dog = i + 1;
+                  final odds = widget.state.getGanarOdds(dog);
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: _dogColor(dog).withOpacity(0.4), width: 1),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            DogButton(number: dog, height: 34),
+                            const SizedBox(height: 4),
+                            Text(
+                              odds > 0 ? odds.toStringAsFixed(2) : '—',
+                              style: TextStyle(
+                                fontFamily: 'DinNextLtPro',
+                                color: _oddsTextColor(odds),
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
               ],
             ),
           ),

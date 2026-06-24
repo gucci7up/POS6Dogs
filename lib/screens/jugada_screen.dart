@@ -31,7 +31,7 @@ class _JugadaScreenState extends State<JugadaScreen> {
   bool _isTicketOpen = false;
   int _lastTicketLength = 0;
   int? _pressedPlayIndex;
-  final TextEditingController _repeatTicketController = TextEditingController();
+  String _repeatInput = '';
 
   @override
   void initState() {
@@ -76,14 +76,20 @@ class _JugadaScreenState extends State<JugadaScreen> {
     );
   }
 
-  // Busca el ticket escrito por el usuario y recarga sus jugadas
-  Future<void> _loadTicketById(PosState state) async {
-    final ticket = await state.findTicketByNumber(_repeatTicketController.text);
+  // Abre teclado numérico táctil y busca el ticket
+  Future<void> _openRepeatNumpad(PosState state) async {
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => _RepeatTicketDialog(initial: _repeatInput),
+    );
+    if (result == null) return;
+    setState(() => _repeatInput = result);
+    if (result.isEmpty) return;
+    final ticket = await state.findTicketByNumber(result);
     if (!mounted) return;
     if (ticket != null) {
       state.repeatTicket(ticket);
-      _repeatTicketController.clear();
-      FocusScope.of(context).unfocus();
+      setState(() => _repeatInput = '');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -124,78 +130,65 @@ class _JugadaScreenState extends State<JugadaScreen> {
         cashier: state.currentUser,
         ticketId: result.ticketId,
         printerName: state.selectedPrinter,
+        paperWidthMm: state.selectedPaperWidth,
       );
     }
   }
 
   // Cuadrito para escribir un N° de ticket y recargar esa jugada
   Widget _buildRepeatTicketBox(PosState state) {
-    return Container(
-      width: 145,
-      height: 145,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1B1B1B),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: const Color(0xFFD4AF37),
-          width: 2,
-        ),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text(
-            'REPETIR\nTICKET',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: 'DinNextLtPro',
-              color: Color(0xFFD4AF37),
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              height: 1.1,
-            ),
+    final hasNumber = _repeatInput.isNotEmpty;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => _openRepeatNumpad(state),
+        child: Container(
+          width: 145,
+          height: 145,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1B1B1B),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFD4AF37), width: 2),
           ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 38,
-            child: TextField(
-              controller: _repeatTicketController,
-              textAlign: TextAlign.center,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(
-                fontFamily: 'DinNextLtPro',
-                color: Colors.white,
-                fontSize: 14,
-              ),
-              decoration: InputDecoration(
-                isDense: true,
-                hintText: 'N° / ID',
-                hintStyle: const TextStyle(color: Colors.white38, fontSize: 12),
-                filled: true,
-                fillColor: Colors.black26,
-                contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(6),
-                  borderSide: BorderSide.none,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'REPETIR\nTICKET',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'DinNextLtPro',
+                  color: Color(0xFFD4AF37),
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  height: 1.1,
                 ),
               ),
-              onSubmitted: (_) => _loadTicketById(state),
-            ),
-          ),
-          const SizedBox(height: 6),
-          MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: () => _loadTicketById(state),
-              child: const Icon(
-                Icons.replay,
-                color: Color(0xFFD4AF37),
-                size: 24,
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black26,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  hasNumber ? _repeatInput : 'N° / ID',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'DinNextLtPro',
+                    color: hasNumber ? Colors.white : Colors.white38,
+                    fontSize: hasNumber ? 16 : 12,
+                    fontWeight: hasNumber ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(height: 6),
+              const Icon(Icons.dialpad, color: Color(0xFFD4AF37), size: 22),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -203,7 +196,6 @@ class _JugadaScreenState extends State<JugadaScreen> {
   @override
   void dispose() {
     widget.state.removeListener(_onStateChanged);
-    _repeatTicketController.dispose();
     super.dispose();
   }
 
@@ -1050,6 +1042,206 @@ class _JugadaScreenState extends State<JugadaScreen> {
             ),
           ),
       ],
+    );
+  }
+}
+
+// ── Diálogo teclado numérico para REPETIR TICKET ──────────────────────────────
+
+class _RepeatTicketDialog extends StatefulWidget {
+  final String initial;
+  const _RepeatTicketDialog({required this.initial});
+
+  @override
+  State<_RepeatTicketDialog> createState() => _RepeatTicketDialogState();
+}
+
+class _RepeatTicketDialogState extends State<_RepeatTicketDialog> {
+  late String _value;
+
+  @override
+  void initState() {
+    super.initState();
+    _value = widget.initial;
+  }
+
+  void _type(String d) {
+    if (_value.length < 8) setState(() => _value += d);
+  }
+
+  void _backspace() {
+    if (_value.isNotEmpty) setState(() => _value = _value.substring(0, _value.length - 1));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: const Color(0xFF0D1F14),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: SizedBox(
+        width: 340,
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'REPETIR TICKET',
+                style: TextStyle(color: Color(0xFFD4AF37), fontFamily: 'DinNextLtPro', fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+              ),
+              const SizedBox(height: 16),
+              // Display
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.4),
+                  border: Border.all(color: const Color(0xFFD4AF37).withOpacity(0.5)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  _value.isEmpty ? '—' : _value,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: _value.isEmpty ? Colors.white30 : Colors.white,
+                    fontFamily: 'DinNextLtPro',
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 4,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Numpad
+              SizedBox(height: 260, child: _NumPad(onDigit: _type, onBackspace: _backspace)),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancelar', style: TextStyle(color: Colors.white54, fontFamily: 'DinNextLtPro', fontSize: 16)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFD4AF37),
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: _value.isEmpty ? null : () => Navigator.pop(context, _value),
+                      child: const Text('BUSCAR', style: TextStyle(fontFamily: 'DinNextLtPro', fontWeight: FontWeight.bold, fontSize: 16)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NumPad extends StatelessWidget {
+  final ValueChanged<String> onDigit;
+  final VoidCallback onBackspace;
+  const _NumPad({required this.onDigit, required this.onBackspace});
+
+  @override
+  Widget build(BuildContext context) {
+    const sp = 14.0;
+    return Column(
+      children: [
+        Expanded(child: Row(children: [
+          Expanded(child: _NumKey(label: '1', onTap: () => onDigit('1'))),
+          const SizedBox(width: sp),
+          Expanded(child: _NumKey(label: '2', onTap: () => onDigit('2'))),
+          const SizedBox(width: sp),
+          Expanded(child: _NumKey(label: '3', onTap: () => onDigit('3'))),
+        ])),
+        const SizedBox(height: sp),
+        Expanded(child: Row(children: [
+          Expanded(child: _NumKey(label: '4', onTap: () => onDigit('4'))),
+          const SizedBox(width: sp),
+          Expanded(child: _NumKey(label: '5', onTap: () => onDigit('5'))),
+          const SizedBox(width: sp),
+          Expanded(child: _NumKey(label: '6', onTap: () => onDigit('6'))),
+        ])),
+        const SizedBox(height: sp),
+        Expanded(child: Row(children: [
+          Expanded(child: _NumKey(label: '7', onTap: () => onDigit('7'))),
+          const SizedBox(width: sp),
+          Expanded(child: _NumKey(label: '8', onTap: () => onDigit('8'))),
+          const SizedBox(width: sp),
+          Expanded(child: _NumKey(label: '9', onTap: () => onDigit('9'))),
+        ])),
+        const SizedBox(height: sp),
+        Expanded(child: Row(children: [
+          Expanded(flex: 2, child: _NumKey(icon: Icons.backspace_outlined, highlighted: true, onTap: onBackspace)),
+          const SizedBox(width: sp),
+          Expanded(child: _NumKey(label: '0', onTap: () => onDigit('0'))),
+        ])),
+      ],
+    );
+  }
+}
+
+class _NumKey extends StatefulWidget {
+  final String? label;
+  final IconData? icon;
+  final bool highlighted;
+  final VoidCallback onTap;
+  const _NumKey({this.label, this.icon, this.highlighted = false, required this.onTap});
+
+  @override
+  State<_NumKey> createState() => _NumKeyState();
+}
+
+class _NumKeyState extends State<_NumKey> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final BoxDecoration deco;
+    final Color contentColor;
+    if (widget.highlighted) {
+      deco = BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: _pressed
+              ? [const Color(0xFFE6C75B), const Color(0xFFB8902C)]
+              : [const Color(0xFFD4AF37), const Color(0xFFA67C1F)],
+        ),
+        borderRadius: BorderRadius.circular(10),
+      );
+      contentColor = const Color(0xFF12241A);
+    } else {
+      deco = BoxDecoration(
+        color: Colors.white.withOpacity(_pressed ? 0.12 : 0.05),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD4AF37).withOpacity(_pressed ? 0.7 : 0.35), width: 1.5),
+      );
+      contentColor = Colors.white;
+    }
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) { setState(() => _pressed = false); widget.onTap(); },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 80),
+        decoration: deco,
+        child: Center(
+          child: widget.icon != null
+              ? Icon(widget.icon, color: contentColor, size: 22)
+              : Text(widget.label!, style: TextStyle(color: contentColor, fontFamily: 'DinNextLtPro', fontSize: 24, fontWeight: FontWeight.bold)),
+        ),
+      ),
     );
   }
 }
