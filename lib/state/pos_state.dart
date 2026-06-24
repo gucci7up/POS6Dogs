@@ -506,23 +506,25 @@ class PosState extends ChangeNotifier {
 
   // Jugada reversa: si hay 1° y 2° seleccionados, juega ambos sentidos (1/2 y 2/1)
   void playReverse() {
-    if (_selectedDog1 != null && _selectedDog2 != null && _currentBetAmount > 0) {
-      _addCalculatedPlay(_selectedDog1!, _selectedDog2!, _currentBetAmount);
-      _addCalculatedPlay(_selectedDog2!, _selectedDog1!, _currentBetAmount);
-      _resetSelection();
-      notifyListeners();
-    }
+    if (_selectedDog1 == null || _selectedDog2 == null) return;
+    final amount = _currentBetAmount > 0 ? _currentBetAmount : 25.0;
+    _addCalculatedPlay(_selectedDog1!, _selectedDog2!, amount);
+    _addCalculatedPlay(_selectedDog2!, _selectedDog1!, amount);
+    _currentBetAmount = amount;
+    _resetSelection();
+    notifyListeners();
   }
 
   // Combina el perro seleccionado en 1° con todos los demás en 2°
   void playAllCombinations() {
     final dog = _selectedDog1 ?? _selectedDog2;
-    if (dog == null || _currentBetAmount <= 0) return;
-
+    if (dog == null) return;
+    final amount = _currentBetAmount > 0 ? _currentBetAmount : 25.0;
     for (int other = 1; other <= 6; other++) {
       if (other == dog) continue;
-      _addCalculatedPlay(dog, other, _currentBetAmount);
+      _addCalculatedPlay(dog, other, amount);
     }
+    _currentBetAmount = amount;
     _resetSelection();
     notifyListeners();
   }
