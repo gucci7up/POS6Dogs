@@ -65,10 +65,12 @@ class ApiClient {
     final http.Response response;
     switch (method) {
       case 'GET':
-        response = await http.get(uri, headers: _headers);
+        response = await http.get(uri, headers: _headers)
+            .timeout(const Duration(seconds: 8));
         break;
       case 'POST':
-        response = await http.post(uri, headers: _headers, body: body != null ? jsonEncode(body) : null);
+        response = await http.post(uri, headers: _headers, body: body != null ? jsonEncode(body) : null)
+            .timeout(const Duration(seconds: 8));
         break;
       default:
         throw ArgumentError('Método no soportado: $method');

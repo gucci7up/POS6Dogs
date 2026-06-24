@@ -292,8 +292,11 @@ class PosState extends ChangeNotifier {
   double get jackpotAmount => _jackpotAmount;
 
   Timer? _timer;
+  bool _isRefreshing = false;
 
   Future<void> _refreshRaceStatus() async {
+    if (_isRefreshing) return; // evita peticiones simultáneas
+    _isRefreshing = true;
     try {
       final status = await _api.getRaceEngineStatus();
       _isServerOnline = true;
@@ -346,6 +349,8 @@ class PosState extends ChangeNotifier {
     } catch (_) {
       _isServerOnline = false;
       notifyListeners();
+    } finally {
+      _isRefreshing = false;
     }
   }
 
