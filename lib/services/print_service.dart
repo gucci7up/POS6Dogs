@@ -384,17 +384,18 @@ class PrintService {
             _hr(),
 
             // Tabla de jugadas: # | Tipo | Num | Cuota | Monto
+            // Anchos ajustados para caber en 58mm sin perder columnas
             pw.Row(children: [
-              pw.SizedBox(width: 14, child: pw.Text('#',     style: _bold(size: _s(7, paperWidthMm)))),
-              pw.SizedBox(width: paperWidthMm <= 58 ? 40 : 50,
-                          child: pw.Text('Tipo',  style: _bold(size: _s(7, paperWidthMm)))),
-              pw.SizedBox(width: paperWidthMm <= 58 ? 26 : 32,
-                          child: pw.Text('Num',   style: _bold(size: _s(7, paperWidthMm)))),
-              pw.SizedBox(width: paperWidthMm <= 58 ? 26 : 32,
+              pw.SizedBox(width: 10, child: pw.Text('#',     style: _bold(size: 7))),
+              pw.SizedBox(width: paperWidthMm <= 58 ? 32 : 42,
+                          child: pw.Text('Tipo',  style: _bold(size: 7))),
+              pw.SizedBox(width: paperWidthMm <= 58 ? 20 : 26,
+                          child: pw.Text('Num',   style: _bold(size: 7))),
+              pw.SizedBox(width: paperWidthMm <= 58 ? 22 : 28,
                           child: pw.Align(alignment: pw.Alignment.centerRight,
-                              child: pw.Text('Cuota', style: _bold(size: _s(7, paperWidthMm))))),
+                              child: pw.Text('Cuota', style: _bold(size: 7)))),
               pw.Expanded(child: pw.Align(alignment: pw.Alignment.centerRight,
-                  child: pw.Text('Monto', style: _bold(size: _s(7, paperWidthMm))))),
+                  child: pw.Text('Monto', style: _bold(size: 7)))),
             ]),
             _hr(0.3),
             ...ticket.plays.asMap().entries.map((entry) {
@@ -413,21 +414,21 @@ class PrintService {
                 tipo = 'Quiniela';
               }
               return pw.Padding(
-                padding: const pw.EdgeInsets.symmetric(vertical: 2),
+                padding: const pw.EdgeInsets.symmetric(vertical: 1.5),
                 child: pw.Row(children: [
-                  pw.SizedBox(width: 14,
-                      child: pw.Text('$i', style: _reg(size: _s(7, paperWidthMm)))),
-                  pw.SizedBox(width: paperWidthMm <= 58 ? 40 : 50,
-                      child: pw.Text(tipo, style: _bold(size: _s(7, paperWidthMm)))),
-                  pw.SizedBox(width: paperWidthMm <= 58 ? 26 : 32,
-                      child: pw.Text(sel,  style: _reg(size: _s(7, paperWidthMm)))),
-                  pw.SizedBox(width: paperWidthMm <= 58 ? 26 : 32,
+                  pw.SizedBox(width: 10,
+                      child: pw.Text('$i', style: _reg(size: 7))),
+                  pw.SizedBox(width: paperWidthMm <= 58 ? 32 : 42,
+                      child: pw.Text(tipo, style: _bold(size: 7))),
+                  pw.SizedBox(width: paperWidthMm <= 58 ? 20 : 26,
+                      child: pw.Text(sel,  style: _reg(size: 7))),
+                  pw.SizedBox(width: paperWidthMm <= 58 ? 22 : 28,
                       child: pw.Align(alignment: pw.Alignment.centerRight,
                           child: pw.Text(play.odds.toStringAsFixed(2),
-                              style: _reg(size: _s(7, paperWidthMm))))),
+                              style: _reg(size: 7)))),
                   pw.Expanded(child: pw.Align(alignment: pw.Alignment.centerRight,
                       child: pw.Text('\$${_money(play.amount)}',
-                          style: _bold(size: _s(7, paperWidthMm))))),
+                          style: _bold(size: 7)))),
                 ]),
               );
             }),
