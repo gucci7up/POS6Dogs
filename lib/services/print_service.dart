@@ -384,18 +384,19 @@ class PrintService {
             _hr(),
 
             // Tabla de jugadas: # | Tipo | Num | Cuota | Monto
-            // Anchos ajustados para caber en 58mm sin perder columnas
+            // Todos los anchos fijos para evitar que Monto se corte
             pw.Row(children: [
-              pw.SizedBox(width: 10, child: pw.Text('#',     style: _bold(size: 7))),
-              pw.SizedBox(width: paperWidthMm <= 58 ? 32 : 42,
-                          child: pw.Text('Tipo',  style: _bold(size: 7))),
+              pw.SizedBox(width: 10,  child: pw.Text('#',     style: _bold(size: 7))),
+              pw.SizedBox(width: paperWidthMm <= 58 ? 30 : 40,
+                                       child: pw.Text('Tipo',  style: _bold(size: 7))),
               pw.SizedBox(width: paperWidthMm <= 58 ? 20 : 26,
-                          child: pw.Text('Num',   style: _bold(size: 7))),
-              pw.SizedBox(width: paperWidthMm <= 58 ? 22 : 28,
+                                       child: pw.Text('Num',   style: _bold(size: 7))),
+              pw.SizedBox(width: paperWidthMm <= 58 ? 24 : 30,
                           child: pw.Align(alignment: pw.Alignment.centerRight,
                               child: pw.Text('Cuota', style: _bold(size: 7)))),
-              pw.Expanded(child: pw.Align(alignment: pw.Alignment.centerRight,
-                  child: pw.Text('Monto', style: _bold(size: 7)))),
+              pw.SizedBox(width: paperWidthMm <= 58 ? 36 : 46,
+                          child: pw.Align(alignment: pw.Alignment.centerRight,
+                              child: pw.Text('Monto', style: _bold(size: 7)))),
             ]),
             _hr(0.3),
             ...ticket.plays.asMap().entries.map((entry) {
@@ -418,17 +419,18 @@ class PrintService {
                 child: pw.Row(children: [
                   pw.SizedBox(width: 10,
                       child: pw.Text('$i', style: _reg(size: 7))),
-                  pw.SizedBox(width: paperWidthMm <= 58 ? 32 : 42,
+                  pw.SizedBox(width: paperWidthMm <= 58 ? 30 : 40,
                       child: pw.Text(tipo, style: _bold(size: 7))),
                   pw.SizedBox(width: paperWidthMm <= 58 ? 20 : 26,
                       child: pw.Text(sel,  style: _reg(size: 7))),
-                  pw.SizedBox(width: paperWidthMm <= 58 ? 22 : 28,
+                  pw.SizedBox(width: paperWidthMm <= 58 ? 24 : 30,
                       child: pw.Align(alignment: pw.Alignment.centerRight,
                           child: pw.Text(play.odds.toStringAsFixed(2),
                               style: _reg(size: 7)))),
-                  pw.Expanded(child: pw.Align(alignment: pw.Alignment.centerRight,
-                      child: pw.Text('\$${_money(play.amount)}',
-                          style: _bold(size: 7)))),
+                  pw.SizedBox(width: paperWidthMm <= 58 ? 36 : 46,
+                      child: pw.Align(alignment: pw.Alignment.centerRight,
+                          child: pw.Text('\$${_money(play.amount)}',
+                              style: _bold(size: 7)))),
                 ]),
               );
             }),
