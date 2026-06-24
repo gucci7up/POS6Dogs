@@ -41,6 +41,7 @@ enum TicketStatus {
 class Ticket {
   final String id;
   final int ticketNumber;
+  final int raceNumber;
   final String dateTime;
   final List<Bet> plays;
   final double amount;
@@ -53,6 +54,7 @@ class Ticket {
   Ticket({
     required this.id,
     required this.ticketNumber,
+    required this.raceNumber,
     required this.dateTime,
     required this.plays,
     required this.amount,
@@ -765,9 +767,13 @@ class PosState extends ChangeNotifier {
         "${createdAt.minute.toString().padLeft(2, '0')}:"
         "${createdAt.second.toString().padLeft(2, '0')}";
 
+    final raceJson = json['race'] as Map<String, dynamic>?;
+    final raceNumber = (raceJson?['numero'] as num?)?.toInt() ?? 0;
+
     return Ticket(
       id: json['id'] as String,
       ticketNumber: (json['ticketNumber'] as num).toInt(),
+      raceNumber: raceNumber,
       dateTime: dateStr,
       plays: plays,
       amount: totalAmount,

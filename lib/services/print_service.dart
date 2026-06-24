@@ -4,13 +4,26 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:pos/state/pos_state.dart';
 
-/// Genera e imprime recibos en formato térmico 80 mm.
+/// Genera e imprime recibos en formato térmico 58 mm u 80 mm.
 class PrintService {
-  static const _fmt = PdfPageFormat(
-    80 * PdfPageFormat.mm,
-    double.infinity,
-    marginAll: 5 * PdfPageFormat.mm,
-  );
+  static PdfPageFormat _fmt(int widthMm) => widthMm <= 58
+      ? PdfPageFormat(
+          widthMm * PdfPageFormat.mm,
+          double.infinity,
+          marginLeft: 3 * PdfPageFormat.mm,
+          marginRight: 5 * PdfPageFormat.mm,
+          marginTop: 2 * PdfPageFormat.mm,
+          marginBottom: 2 * PdfPageFormat.mm,
+        )
+      : PdfPageFormat(
+          widthMm * PdfPageFormat.mm,
+          double.infinity,
+          marginAll: 5 * PdfPageFormat.mm,
+        );
+
+  // Reduce tamaño de fuente en 1pt para papel de 58mm, mínimo 7pt
+  static double _s(double size, int widthMm) =>
+      widthMm <= 58 ? (size - 1).clamp(7, 20) : size;
 
   // ── Helpers de estilo ──────────────────────────────────────────────────────
 
@@ -30,62 +43,83 @@ class PrintService {
 
   static String _money(double v) => v.toStringAsFixed(2);
 
-  static String _line([String char = '-']) => char * 38;
-
   static pw.Widget _hr([double thickness = 0.4]) =>
       pw.Divider(thickness: thickness, color: PdfColors.black);
 
   // ── Cabecera común ─────────────────────────────────────────────────────────
 
   static List<pw.Widget> _header(
-      String title, String agencyName, String cashier) {
+      String title, String agencyName, String cashier, int widthMm) {
     final now = DateTime.now();
     return [
       pw.Center(
-        child: pw.Text('MBSPORT RACING DOGS', style: _bold(size: 12)),
+        child: pw.Text('MBSPORT RACING DOGS', style: _bold(size: _s(12, widthMm))),
       ),
-      pw.Center(child: pw.Text('Racing Dogs - Sistema POS', style: _reg(size: 8))),
-      pw.SizedBox(height: 6),
-      _hr(0.8),
-      pw.Center(child: pw.Text(title, style: _bold(size: 11))),
-      _hr(0.8),
+      pw.Center(child: pw.Text('Racing Dogs - Sistema POS', style: _reg(size: _s(7, widthMm)))),
       pw.SizedBox(height: 4),
-      _infoRow('Fecha', _date(now)),
-      _infoRow('Hora', _time(now)),
-      _infoRow('Agencia', agencyName),
-      _infoRow('Cajero', cashier),
-      pw.SizedBox(height: 4),
+      _hr(0.8),
+      pw.Center(child: pw.Text(title, style: _bold(size: _s(10, widthMm)))),
+      _hr(0.8),
+      pw.SizedBox(height: 3),
+      _infoRow('Fecha', _date(now), widthMm),
+      _infoRow('Hora', _time(now), widthMm),
+      _infoRow('Agencia', agencyName, widthMm),
+      _infoRow('Cajero', cashier, widthMm),
+      pw.SizedBox(height: 3),
       _hr(),
     ];
   }
 
   // ── Pie de página común ────────────────────────────────────────────────────
 
-  static List<pw.Widget> _footer() => [
+  static List<pw.Widget> _footer(int widthMm) => [
         pw.SizedBox(height: 6),
         _hr(0.8),
-        pw.Center(child: pw.Text('** MBSPORT RACING DOGS 2026 **', style: _bold(size: 7))),
-        pw.Center(child: pw.Text('www.mbsport.lat', style: _reg(size: 7))),
-        pw.SizedBox(height: 8),
+        pw.Center(child: pw.Text('*** IMPORTANTE ***', style: _bold(size: _s(8, widthMm)))),
+        pw.SizedBox(height: 2),
+        pw.Center(child: pw.Text('CONSERVE SU TICKET', style: _reg(size: _s(7, widthMm)))),
+        pw.Center(child: pw.Text('LOS PREMIOS SE PAGAN', style: _reg(size: _s(7, widthMm)))),
+        pw.Center(child: pw.Text('UNICAMENTE CONTRA LA', style: _reg(size: _s(7, widthMm)))),
+        pw.Center(child: pw.Text('PRESENTACION DEL TICKET', style: _reg(size: _s(7, widthMm)))),
+        pw.Center(child: pw.Text('ORIGINAL.', style: _reg(size: _s(7, widthMm)))),
+        pw.SizedBox(height: 6),
+        _hr(0.8),
+        pw.Center(child: pw.Text('** MBSPORT RACING DOGS 2026 **', style: _bold(size: _s(7, widthMm)))),
+        pw.Center(child: pw.Text('www.mbsport.lat', style: _reg(size: _s(7, widthMm)))),
+        pw.SizedBox(height: 6),
       ];
 
-  static pw.Widget _infoRow(String label, String value) => pw.Row(
-        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-        children: [
-          pw.Text(label, style: _bold(size: 8)),
-          pw.Text(value, style: _reg(size: 8)),
-        ],
-      );
+  // Fila etiqueta | valor — el valor usa Flexible para no desbordar
+  static pw.Widget _infoRow(String label, String value, int widthMm) {
+    final sz = _s(8, widthMm);
+    return pw.Row(
+      children: [
+        pw.Text(label, style: _bold(size: sz)),
+        pw.SizedBox(width: 4),
+        pw.Flexible(
+          child: pw.Text(
+            value,
+            style: _reg(size: sz),
+            textAlign: pw.TextAlign.right,
+          ),
+        ),
+      ],
+    );
+  }
 
   static pw.Widget _summaryRow(String label, String value,
-      {bool highlight = false}) =>
-      pw.Row(
-        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-        children: [
-          pw.Text(label, style: highlight ? _bold(size: 9) : _reg(size: 8)),
-          pw.Text(value, style: highlight ? _bold(size: 9) : _reg(size: 8)),
-        ],
-      );
+      {bool highlight = false, int widthMm = 80}) {
+    final style = highlight ? _bold(size: _s(9, widthMm)) : _reg(size: _s(8, widthMm));
+    return pw.Row(
+      children: [
+        pw.SizedBox(
+          width: widthMm <= 58 ? 90 : 120,
+          child: pw.Text(label, style: style),
+        ),
+        pw.Text(value, style: style),
+      ],
+    );
+  }
 
   // ══════════════════════════════════════════════════════════════════════════
   // RESULTADOS DEL DÍA
@@ -94,34 +128,35 @@ class PrintService {
   static Future<void> printResultados(
     List<RaceResult> results,
     String agencyName,
-    String cashier,
-  ) async {
+    String cashier, {
+    int paperWidthMm = 80,
+  }) async {
     final pdf = pw.Document(title: 'Resultados del Dia');
 
     pdf.addPage(
       pw.Page(
-        pageFormat: _fmt,
+        pageFormat: _fmt(paperWidthMm),
         build: (context) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            ..._header('RESULTADOS DEL DIA', agencyName, cashier),
+            ..._header('RESULTADOS DEL DIA', agencyName, cashier, paperWidthMm),
 
             // Encabezado de tabla
             pw.Row(children: [
               pw.SizedBox(
-                width: 30,
-                child: pw.Text('N°', style: _bold(size: 8)),
+                width: 26,
+                child: pw.Text('N°', style: _bold(size: _s(8, paperWidthMm))),
               ),
               pw.Expanded(
                 child: pw.Center(
-                  child: pw.Text('TRIFECTA', style: _bold(size: 8)),
+                  child: pw.Text('TRIFECTA', style: _bold(size: _s(8, paperWidthMm))),
                 ),
               ),
               pw.SizedBox(
-                width: 42,
+                width: 34,
                 child: pw.Align(
                   alignment: pw.Alignment.centerRight,
-                  child: pw.Text('BONUS', style: _bold(size: 8)),
+                  child: pw.Text('BONUS', style: _bold(size: _s(8, paperWidthMm))),
                 ),
               ),
             ]),
@@ -133,25 +168,24 @@ class PrintService {
                   ? '${r.winner1} - ${r.winner2} - ${r.winner3}'
                   : '${r.winner1} - ${r.winner2}';
               return pw.Padding(
-                padding: const pw.EdgeInsets.symmetric(vertical: 2.5),
+                padding: const pw.EdgeInsets.symmetric(vertical: 2),
                 child: pw.Row(children: [
                   pw.SizedBox(
-                    width: 30,
-                    child: pw.Text('${r.raceNumber}', style: _reg(size: 8)),
+                    width: 26,
+                    child: pw.Text('${r.raceNumber}', style: _reg(size: _s(8, paperWidthMm))),
                   ),
                   pw.Expanded(
                     child: pw.Center(
-                      child: pw.Text(trifecta,
-                          style: _bold(size: 8)),
+                      child: pw.Text(trifecta, style: _bold(size: _s(8, paperWidthMm))),
                     ),
                   ),
                   pw.SizedBox(
-                    width: 42,
+                    width: 34,
                     child: pw.Align(
                       alignment: pw.Alignment.centerRight,
                       child: pw.Text(
                         r.bonus.isNotEmpty ? r.bonus : '-',
-                        style: _reg(size: 8),
+                        style: _reg(size: _s(8, paperWidthMm)),
                       ),
                     ),
                   ),
@@ -161,9 +195,9 @@ class PrintService {
 
             _hr(0.3),
             pw.SizedBox(height: 4),
-            _summaryRow('Total carreras', '${results.length}', highlight: true),
+            _summaryRow('Total carreras', '${results.length}', highlight: true, widthMm: paperWidthMm),
 
-            ..._footer(),
+            ..._footer(paperWidthMm),
           ],
         ),
       ),
@@ -184,32 +218,33 @@ class PrintService {
     required double totalInversion,
     required double totalPagar,
     required double totalBalance,
+    int paperWidthMm = 80,
   }) async {
     final pdf = pw.Document(title: 'Ventas del Dia');
 
     pdf.addPage(
       pw.Page(
-        pageFormat: _fmt,
+        pageFormat: _fmt(paperWidthMm),
         build: (context) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            ..._header('VENTAS DEL DIA', agencyName, cashier),
+            ..._header('VENTAS DEL DIA', agencyName, cashier, paperWidthMm),
 
             // Encabezado de tabla
             pw.Row(children: [
-              pw.SizedBox(width: 26, child: pw.Text('N°', style: _bold(size: 7))),
-              pw.SizedBox(width: 36, child: pw.Text('HORA', style: _bold(size: 7))),
-              pw.Expanded(child: pw.Text('JUGADA', style: _bold(size: 7))),
+              pw.SizedBox(width: 22, child: pw.Text('N°', style: _bold(size: _s(7, paperWidthMm)))),
+              pw.SizedBox(width: 28, child: pw.Text('HORA', style: _bold(size: _s(7, paperWidthMm)))),
+              pw.Expanded(child: pw.Text('JUGADA', style: _bold(size: _s(7, paperWidthMm)))),
               pw.SizedBox(
-                  width: 38,
+                  width: 32,
                   child: pw.Align(
                       alignment: pw.Alignment.centerRight,
-                      child: pw.Text('MONTO', style: _bold(size: 7)))),
+                      child: pw.Text('MONTO', style: _bold(size: _s(7, paperWidthMm))))),
               pw.SizedBox(
-                  width: 36,
+                  width: 30,
                   child: pw.Align(
                       alignment: pw.Alignment.centerRight,
-                      child: pw.Text('PAGAR', style: _bold(size: 7)))),
+                      child: pw.Text('PAGAR', style: _bold(size: _s(7, paperWidthMm))))),
             ]),
             _hr(0.3),
 
@@ -232,32 +267,30 @@ class PrintService {
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
                       pw.SizedBox(
-                          width: 26,
-                          child: pw.Text('${t.ticketNumber}', style: _reg(size: 7))),
+                          width: 22,
+                          child: pw.Text('${t.ticketNumber}', style: _reg(size: _s(7, paperWidthMm)))),
                       pw.SizedBox(
-                          width: 36,
-                          child: pw.Text(shortTime, style: _reg(size: 7))),
+                          width: 28,
+                          child: pw.Text(shortTime, style: _reg(size: _s(7, paperWidthMm)))),
                       pw.Expanded(
                           child: pw.Text(
                         plays.isNotEmpty ? plays : '-',
-                        style: _reg(size: 7),
+                        style: _reg(size: _s(7, paperWidthMm)),
                       )),
                       pw.SizedBox(
-                          width: 38,
+                          width: 32,
                           child: pw.Align(
                               alignment: pw.Alignment.centerRight,
                               child: pw.Text(_money(t.amount),
-                                  style: _reg(size: 7)))),
+                                  style: _reg(size: _s(7, paperWidthMm))))),
                       pw.SizedBox(
-                          width: 36,
+                          width: 30,
                           child: pw.Align(
                               alignment: pw.Alignment.centerRight,
-                              child:
-                                  pw.Text(_money(t.pay), style: _reg(size: 7)))),
+                              child: pw.Text(_money(t.pay), style: _reg(size: _s(7, paperWidthMm))))),
                     ],
                   ),
-                  pw.Text('  ${_statusLabel(t.status)}',
-                      style: _reg(size: 6)),
+                  pw.Text('  ${_statusLabel(t.status)}', style: _reg(size: _s(6, paperWidthMm))),
                   pw.Padding(
                     padding: const pw.EdgeInsets.symmetric(vertical: 1),
                     child: pw.Divider(thickness: 0.2, color: PdfColors.grey400),
@@ -266,28 +299,28 @@ class PrintService {
               );
             }),
 
-            pw.SizedBox(height: 6),
+            pw.SizedBox(height: 4),
 
             // Resumen de totales
             pw.Container(
-              padding: const pw.EdgeInsets.all(5),
+              padding: const pw.EdgeInsets.all(4),
               decoration: pw.BoxDecoration(
                 border: pw.Border.all(width: 0.5),
                 borderRadius: const pw.BorderRadius.all(pw.Radius.circular(2)),
               ),
               child: pw.Column(
                 children: [
-                  _summaryRow('Total jugadas', '${tickets.length}'),
-                  _summaryRow('Monto total', _money(totalMonto)),
-                  _summaryRow('Inversion', _money(totalInversion)),
-                  _summaryRow('Total a pagar', _money(totalPagar)),
+                  _summaryRow('Total jugadas', '${tickets.length}', widthMm: paperWidthMm),
+                  _summaryRow('Monto total', _money(totalMonto), widthMm: paperWidthMm),
+                  _summaryRow('Inversion', _money(totalInversion), widthMm: paperWidthMm),
+                  _summaryRow('Total a pagar', _money(totalPagar), widthMm: paperWidthMm),
                   _hr(0.5),
-                  _summaryRow('BALANCE', _money(totalBalance), highlight: true),
+                  _summaryRow('BALANCE', _money(totalBalance), highlight: true, widthMm: paperWidthMm),
                 ],
               ),
             ),
 
-            ..._footer(),
+            ..._footer(paperWidthMm),
           ],
         ),
       ),
@@ -306,6 +339,7 @@ class PrintService {
     required String cashier,
     String? ticketId,
     String printerName = 'Impresora predeterminada',
+    int paperWidthMm = 80,
   }) async {
     final pdf = pw.Document(title: 'Ticket #${ticket.ticketNumber}');
 
@@ -318,90 +352,116 @@ class PrintService {
     final logoImage = pw.MemoryImage(logoBytes.buffer.asUint8List());
 
     final now = DateTime.now();
+    final logoWidth  = paperWidthMm <= 58 ? 100.0 : 150.0;
+    final logoHeight = paperWidthMm <= 58 ?  50.0 :  75.0;
+    final qrSize     = paperWidthMm <= 58 ? 52.0 :  72.0;
 
     pdf.addPage(
       pw.Page(
-        pageFormat: _fmt,
+        pageFormat: _fmt(paperWidthMm),
         build: (context) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
             // Logo
             pw.Center(
-              child: pw.Image(logoImage, width: 120, height: 60, fit: pw.BoxFit.contain),
+              child: pw.Image(logoImage, width: logoWidth, height: logoHeight, fit: pw.BoxFit.contain),
             ),
-            pw.SizedBox(height: 6),
-            _hr(0.8),
-            pw.Center(child: pw.Text('TICKET DE APUESTA', style: _bold(size: 11))),
-            _hr(0.8),
             pw.SizedBox(height: 4),
-            _infoRow('Fecha', _date(now)),
-            _infoRow('Hora', _time(now)),
-            _infoRow('Agencia', agencyName),
-            _infoRow('Cajero', cashier),
-            pw.SizedBox(height: 4),
+            _hr(0.8),
+            pw.Center(child: pw.Text('TICKET DE APUESTA', style: _bold(size: _s(10, paperWidthMm)))),
+            _hr(0.8),
+            pw.SizedBox(height: 3),
+            _infoRow('Fecha', _date(now), paperWidthMm),
+            _infoRow('Hora', _time(now), paperWidthMm),
+            _infoRow('Agencia', agencyName, paperWidthMm),
+            _infoRow('Cajero', cashier, paperWidthMm),
+            pw.SizedBox(height: 3),
             _hr(),
 
-            _infoRow('Ticket N°', '#${ticket.ticketNumber}'),
-            pw.SizedBox(height: 4),
+            _infoRow('#CARRERA', '${ticket.raceNumber}', paperWidthMm),
+            _infoRow('#TICKET', '${ticket.ticketNumber}', paperWidthMm),
+            pw.SizedBox(height: 3),
             _hr(),
 
-            // Jugadas
-            pw.Text('JUGADAS', style: _bold(size: 8)),
-            pw.SizedBox(height: 4),
-            ...ticket.plays.map((play) {
+            // Tabla de jugadas: # | Tipo | Num | Cuota | Monto
+            pw.Row(children: [
+              pw.SizedBox(width: 14, child: pw.Text('#',     style: _bold(size: _s(7, paperWidthMm)))),
+              pw.SizedBox(width: paperWidthMm <= 58 ? 40 : 50,
+                          child: pw.Text('Tipo',  style: _bold(size: _s(7, paperWidthMm)))),
+              pw.SizedBox(width: paperWidthMm <= 58 ? 26 : 32,
+                          child: pw.Text('Num',   style: _bold(size: _s(7, paperWidthMm)))),
+              pw.SizedBox(width: paperWidthMm <= 58 ? 26 : 32,
+                          child: pw.Align(alignment: pw.Alignment.centerRight,
+                              child: pw.Text('Cuota', style: _bold(size: _s(7, paperWidthMm))))),
+              pw.Expanded(child: pw.Align(alignment: pw.Alignment.centerRight,
+                  child: pw.Text('Monto', style: _bold(size: _s(7, paperWidthMm))))),
+            ]),
+            _hr(0.3),
+            ...ticket.plays.asMap().entries.map((entry) {
+              final i    = entry.key + 1;
+              final play = entry.value;
               String sel;
+              String tipo;
               if (play.dog3 != null) {
-                sel = '${play.dog1}-${play.dog2}-${play.dog3}';
+                sel  = '${play.dog1}-${play.dog2}-${play.dog3}';
+                tipo = 'Tripleta';
               } else if (play.dog2 != null) {
-                sel = '${play.dog1}-${play.dog2}';
+                sel  = '${play.dog1}-${play.dog2}';
+                tipo = 'Pale';
               } else {
-                sel = '${play.dog1}';
+                sel  = '${play.dog1}';
+                tipo = 'Quiniela';
               }
               return pw.Padding(
                 padding: const pw.EdgeInsets.symmetric(vertical: 2),
-                child: pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text(sel, style: _bold(size: 9)),
-                    pw.Text(
-                      '\$${_money(play.amount)} × ${play.odds.toStringAsFixed(2)}',
-                      style: _reg(size: 8),
-                    ),
-                  ],
-                ),
+                child: pw.Row(children: [
+                  pw.SizedBox(width: 14,
+                      child: pw.Text('$i', style: _reg(size: _s(7, paperWidthMm)))),
+                  pw.SizedBox(width: paperWidthMm <= 58 ? 40 : 50,
+                      child: pw.Text(tipo, style: _bold(size: _s(7, paperWidthMm)))),
+                  pw.SizedBox(width: paperWidthMm <= 58 ? 26 : 32,
+                      child: pw.Text(sel,  style: _reg(size: _s(7, paperWidthMm)))),
+                  pw.SizedBox(width: paperWidthMm <= 58 ? 26 : 32,
+                      child: pw.Align(alignment: pw.Alignment.centerRight,
+                          child: pw.Text(play.odds.toStringAsFixed(2),
+                              style: _reg(size: _s(7, paperWidthMm))))),
+                  pw.Expanded(child: pw.Align(alignment: pw.Alignment.centerRight,
+                      child: pw.Text('\$${_money(play.amount)}',
+                          style: _bold(size: _s(7, paperWidthMm))))),
+                ]),
               );
             }),
             _hr(0.3),
 
-            pw.SizedBox(height: 4),
-            _summaryRow('Total apostado', '\$${_money(ticket.amount)}', highlight: true),
+            pw.SizedBox(height: 3),
+            _summaryRow('Total apostado', '\$${_money(ticket.amount)}', highlight: true, widthMm: paperWidthMm),
             pw.SizedBox(height: 2),
-            _summaryRow('Premio potencial', '\$${_money(ticket.potentialPrize)}'),
-            pw.SizedBox(height: 4),
+            _summaryRow('Premio potencial', '\$${_money(ticket.potentialPrize)}', widthMm: paperWidthMm),
+            pw.SizedBox(height: 3),
             _hr(),
 
             // QR al pie — escanear lleva directo al resultado del ticket
             if (qrUrl != null) ...[
-              pw.SizedBox(height: 8),
+              pw.SizedBox(height: 6),
               pw.Center(
                 child: pw.BarcodeWidget(
                   barcode: pw.Barcode.qrCode(),
                   data: qrUrl,
-                  width: 72,
-                  height: 72,
+                  width: qrSize,
+                  height: qrSize,
                 ),
               ),
-              pw.SizedBox(height: 4),
+              pw.SizedBox(height: 3),
               pw.Center(
                 child: pw.Text(
                   'Escanea para ver tu resultado',
-                  style: _reg(size: 7),
+                  style: _reg(size: _s(7, paperWidthMm)),
                 ),
               ),
               pw.SizedBox(height: 2),
             ],
 
-            ..._footer(),
+            ..._footer(paperWidthMm),
           ],
         ),
       ),
