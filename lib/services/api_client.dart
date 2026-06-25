@@ -133,6 +133,14 @@ class ApiClient {
     return await _request('GET', '/odds/race/$raceId/live') as List<dynamic>;
   }
 
+  /// Consulta la cuota exacta de UNA selección específica directo de la DB
+  Future<double?> getSelectionOdds(String raceId, String betType, String selection) async {
+    final result = await _request('GET', '/odds/race/$raceId/selection?betType=$betType&selection=$selection') as Map<String, dynamic>;
+    final odds = result['odds'];
+    if (odds == null) return null;
+    return double.tryParse(odds.toString());
+  }
+
   Future<List<dynamic>> getRaceOdds(String raceId) async {
     return await _request('GET', '/odds/race/$raceId') as List<dynamic>;
   }

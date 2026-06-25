@@ -640,11 +640,13 @@ class PosState extends ChangeNotifier {
     _playCombinedR(dog, 12.5);
   }
 
-  void _playCombinedR(int dog, double amountPerPlay) {
+  Future<void> _playCombinedR(int dog, double amountPerPlay) async {
     for (int other = 1; other <= 6; other++) {
       if (other == dog) continue;
-      _addCalculatedPlay(dog, other, amountPerPlay);
-      _addCalculatedPlay(other, dog, amountPerPlay);
+      final o1 = await _fetchOddsForSelection('EXACTA', '$dog-$other');
+      final o2 = await _fetchOddsForSelection('EXACTA', '$other-$dog');
+      if (o1 != null && o1 > 1) _currentTicketPlays.add(Bet(dog1: dog, dog2: other, amount: amountPerPlay, odds: o1));
+      if (o2 != null && o2 > 1) _currentTicketPlays.add(Bet(dog1: other, dog2: dog, amount: amountPerPlay, odds: o2));
     }
     _resetSelection();
     notifyListeners();
@@ -654,35 +656,50 @@ class PosState extends ChangeNotifier {
   String? get oddsLoadError => _oddsLoadError;
   void clearOddsLoadError() { _oddsLoadError = null; }
 
+  // Obtiene la cuota de una selección consultando directamente la DB vía API
+  Future<double?> _fetchOddsForSelection(String betType, String selection) async {
+    if (_currentRaceId == null) return null;
+    try {
+      return await _api.getSelectionOdds(_currentRaceId!, betType, selection);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> addPlayToTicket() async {
     if (_currentBetAmount <= 0) return;
-
-    // Cargar cuotas frescas — hasta 3 intentos
-    bool oddsOk = false;
-    for (int intento = 0; intento < 3; intento++) {
-      await _refreshLiveOdds();
-      final tieneExacta = _liveOdds.keys.any((k) => k.startsWith('EXACTA:') && (_liveOdds[k] ?? 0) > 1);
-      if (tieneExacta) { oddsOk = true; break; }
-      if (intento < 2) await Future.delayed(const Duration(milliseconds: 400));
-    }
-
-    if (!oddsOk) {
-      // Bloquear la apuesta — sin cuotas verificadas no se crea nada
-      _oddsLoadError = 'No se pudieron cargar las cuotas del servidor. Intenta de nuevo.';
-      notifyListeners();
-      return;
-    }
     _oddsLoadError = null;
-    if (_selectedDog1 != null && _selectedDog2 != null && _selectedDog3 != null) {
-      _addCalculatedTrifectaPlay(_selectedDog1!, _selectedDog2!, _selectedDog3!, _currentBetAmount);
-    } else if (_selectedDog1 != null && _selectedDog2 != null) {
-      _addCalculatedPlay(_selectedDog1!, _selectedDog2!, _currentBetAmount);
-    } else if (_selectedDog1 != null) {
-      _addSinglePlay(_selectedDog1!, _currentBetAmount);
-    } else if (_selectedDog2 != null) {
-      _addSinglePlay(_selectedDog2!, _currentBetAmount);
-    } else if (_selectedDog3 != null) {
-      _addSinglePlay(_selectedDog3!, _currentBetAmount);
+
+    final d1 = _selectedDog1;
+    final d2 = _selectedDog2;
+    final d3 = _selectedDog3;
+
+    if (d1 != null && d2 != null && d3 != null) {
+      // TRIFECTA: consultar cuota exacta de la DB
+      final odds = await _fetchOddsForSelection('TRIFECTA', '$d1-$d2-$d3');
+      if (odds == null || odds <= 1) {
+        _oddsLoadError = 'No se pudo obtener la cuota de esta TRIPLETA. Verifica conexión e inténtalo de nuevo.';
+        notifyListeners();
+        return;
+      }
+      _currentTicketPlays.add(Bet(dog1: d1, dog2: d2, dog3: d3, amount: _currentBetAmount, odds: odds));
+
+    } else if (d1 != null && d2 != null) {
+      // EXACTA: consultar cuota exacta de la DB
+      final odds = await _fetchOddsForSelection('EXACTA', '$d1-$d2');
+      if (odds == null || odds <= 1) {
+        _oddsLoadError = 'No se pudo obtener la cuota de este PALE. Verifica conexión e inténtalo de nuevo.';
+        notifyListeners();
+        return;
+      }
+      _currentTicketPlays.add(Bet(dog1: d1, dog2: d2, amount: _currentBetAmount, odds: odds));
+
+    } else if (d1 != null) {
+      _addSinglePlay(d1, _currentBetAmount);
+    } else if (d2 != null) {
+      _addSinglePlay(d2, _currentBetAmount);
+    } else if (d3 != null) {
+      _addSinglePlay(d3, _currentBetAmount);
     } else {
       return;
     }
