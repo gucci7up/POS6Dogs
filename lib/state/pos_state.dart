@@ -435,11 +435,28 @@ class PosState extends ChangeNotifier {
       _selectedDog1 != null || _selectedDog2 != null || _selectedDog3 != null;
 
   void addBetAmount(double amount) {
+    // Sin selección activa + hay jugadas → sumar al último play del ticket
+    if (!_hasAnySelection && _currentTicketPlays.isNotEmpty) {
+      _addAmountToLastPlay(amount);
+      return;
+    }
     _currentBetAmount += amount;
     notifyListeners();
     if (_hasAnySelection && _currentBetAmount > 0) {
       addPlayToTicket();
     }
+  }
+
+  void _addAmountToLastPlay(double amount) {
+    final last = _currentTicketPlays.last;
+    _currentTicketPlays[_currentTicketPlays.length - 1] = Bet(
+      dog1: last.dog1,
+      dog2: last.dog2,
+      dog3: last.dog3,
+      amount: last.amount + amount,
+      odds: last.odds,
+    );
+    notifyListeners();
   }
 
   void clearBetAmount() {
