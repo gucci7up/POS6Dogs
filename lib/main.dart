@@ -112,6 +112,13 @@ class _RootScreenState extends State<RootScreen> {
     }
   }
 
+  // Desbloqueo: usa el username guardado, solo pide el PIN
+  Future<String?> _handleUnlock(String pin) async {
+    final username = _auth?.username;
+    if (username == null) return 'Sesión inválida';
+    return _handleLogin(username, pin);
+  }
+
   void _handleLogout() {
     _inactivityTimer?.cancel();
     _apiClient.setToken(null);
@@ -146,7 +153,9 @@ class _RootScreenState extends State<RootScreen> {
           if (_sessionLocked)
             LoginScreen(
               onLogin: _handleLogin,
+              onUnlock: _handleUnlock,
               isLocked: true,
+              lockedUsername: _auth?.username ?? '',
             ),
         ],
       ),

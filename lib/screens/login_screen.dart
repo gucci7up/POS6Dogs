@@ -3,12 +3,17 @@ import 'package:pos/layouts/desktop_layout.dart';
 
 class LoginScreen extends StatefulWidget {
   final Future<String?> Function(String username, String password) onLogin;
-
-  /// `true` cuando se muestra por inactividad (sesión bloqueada),
-  /// no como login inicial.
+  final Future<String?> Function(String pin)? onUnlock;
+  final String lockedUsername;
   final bool isLocked;
 
-  const LoginScreen({super.key, required this.onLogin, this.isLocked = false});
+  const LoginScreen({
+    super.key,
+    required this.onLogin,
+    this.onUnlock,
+    this.lockedUsername = '',
+    this.isLocked = false,
+  });
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -46,7 +51,30 @@ class _LoginScreenState extends State<LoginScreen> {
     return buffer.toString();
   }
 
+  @override
+  void initState() {
+    super.initState();
+    // Si está bloqueado, ir directo al campo PIN
+    if (widget.isLocked) {
+      _active = _ActiveField.password;
+    }
+  }
+
   Future<void> _handleAccess() async {
+    // Modo desbloqueo: solo valida el PIN con el usuario guardado
+    if (widget.isLocked && widget.onUnlock != null) {
+      if (_password.isEmpty) {
+        setState(() => _error = 'Ingresa tu PIN.');
+        return;
+      }
+      setState(() { _isLoading = true; _error = null; });
+      final result = await widget.onUnlock!(_password);
+      if (!mounted) return;
+      setState(() { _isLoading = false; _error = result; });
+      return;
+    }
+
+    // Modo login normal
     if (_account.length != _accountDigits || _password.isEmpty) {
       setState(() {
         _error = 'Complete el número de acceso (12 dígitos) y el PIN.';
@@ -54,18 +82,10 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
+    setState(() { _isLoading = true; _error = null; });
     final result = await widget.onLogin(_formattedAccount, _password);
-
     if (!mounted) return;
-    setState(() {
-      _isLoading = false;
-      _error = result;
-    });
+    setState(() { _isLoading = false; _error = result; });
   }
 
   void _backspace() {
@@ -181,24 +201,52 @@ class _LoginScreenState extends State<LoginScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const _FieldLabel('NÚMERO DE ACCESO'),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _LoginField(
-                                    text: _formattedAccount,
-                                    isPassword: false,
-                                    isActive: _active == _ActiveField.account,
-                                    onTap: () => setState(
-                                      () => _active = _ActiveField.account,
+                            // Modo bloqueo: mostrar usuario guardado, no el campo de cuenta
+                            if (widget.isLocked) ...[
+                              const _FieldLabel('USUARIO'),
+                              const SizedBox(height: 12),
+                              Container(
+                                height: 56,
+                                padding: const EdgeInsets.symmetric(horizontal: 20),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1B2E20),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: const Color(0xFFD4AF37).withOpacity(0.5)),
+                                ),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    widget.lockedUsername,
+                                    style: const TextStyle(
+                                      fontFamily: 'DinNextLtPro',
+                                      color: Color(0xFFD4AF37),
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.5,
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 20),
-                                _ClearButton(onTap: _clearAccount),
-                              ],
-                            ),
+                              ),
+                            ] else ...[
+                              const _FieldLabel('NÚMERO DE ACCESO'),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _LoginField(
+                                      text: _formattedAccount,
+                                      isPassword: false,
+                                      isActive: _active == _ActiveField.account,
+                                      onTap: () => setState(
+                                        () => _active = _ActiveField.account,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 20),
+                                  _ClearButton(onTap: _clearAccount),
+                                ],
+                              ),
+                            ],
                             const SizedBox(height: 36),
                             const _FieldLabel('PIN DE ACCESO'),
                             const SizedBox(height: 12),
