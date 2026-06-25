@@ -488,13 +488,7 @@ class PosState extends ChangeNotifier {
     _currentBetAmount += amount;
     notifyListeners();
     if (_hasAnySelection && _currentBetAmount > 0) {
-      // Garantizar cuotas actuales del servidor antes de crear la jugada
-      if (!_loadingOddsForBet && _currentRaceId != null) {
-        _loadingOddsForBet = true;
-        await _refreshLiveOdds();
-        _loadingOddsForBet = false;
-      }
-      addPlayToTicket();
+      unawaited(addPlayToTicket()); // addPlayToTicket ya llama _ensureOddsLoaded internamente
     }
   }
 
@@ -663,8 +657,11 @@ class PosState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addPlayToTicket() {
+  // Todos los flujos de creación de jugada pasan por aquí
+  // Se garantiza cargar cuotas del servidor antes de registrar
+  Future<void> addPlayToTicket() async {
     if (_currentBetAmount <= 0) return;
+    await _ensureOddsLoaded(); // ← clave: cubre selectDog, addBetAmount y todos los flujos
     if (_selectedDog1 != null && _selectedDog2 != null && _selectedDog3 != null) {
       _addCalculatedTrifectaPlay(_selectedDog1!, _selectedDog2!, _selectedDog3!, _currentBetAmount);
     } else if (_selectedDog1 != null && _selectedDog2 != null) {
