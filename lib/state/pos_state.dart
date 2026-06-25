@@ -477,7 +477,9 @@ class PosState extends ChangeNotifier {
   bool get _hasAnySelection =>
       _selectedDog1 != null || _selectedDog2 != null || _selectedDog3 != null;
 
-  void addBetAmount(double amount) {
+  bool _loadingOddsForBet = false;
+
+  Future<void> addBetAmount(double amount) async {
     // Sin selección activa + hay jugadas → sumar al último play del ticket
     if (!_hasAnySelection && _currentTicketPlays.isNotEmpty) {
       _addAmountToLastPlay(amount);
@@ -486,6 +488,12 @@ class PosState extends ChangeNotifier {
     _currentBetAmount += amount;
     notifyListeners();
     if (_hasAnySelection && _currentBetAmount > 0) {
+      // Garantizar cuotas actuales del servidor antes de crear la jugada
+      if (!_loadingOddsForBet && _currentRaceId != null) {
+        _loadingOddsForBet = true;
+        await _refreshLiveOdds();
+        _loadingOddsForBet = false;
+      }
       addPlayToTicket();
     }
   }
@@ -594,9 +602,18 @@ class PosState extends ChangeNotifier {
     _currentBetAmount = 0.0;
   }
 
+  // Refresca odds si hace falta antes de crear jugadas
+  Future<void> _ensureOddsLoaded() async {
+    if (_currentRaceId == null || _loadingOddsForBet) return;
+    _loadingOddsForBet = true;
+    await _refreshLiveOdds();
+    _loadingOddsForBet = false;
+  }
+
   // Jugada reversa: si hay 1° y 2° seleccionados, juega ambos sentidos (1/2 y 2/1)
-  void playReverse() {
+  Future<void> playReverse() async {
     if (_selectedDog1 == null || _selectedDog2 == null) return;
+    await _ensureOddsLoaded();
     final amount = _currentBetAmount > 0 ? _currentBetAmount : 25.0;
     _addCalculatedPlay(_selectedDog1!, _selectedDog2!, amount);
     _addCalculatedPlay(_selectedDog2!, _selectedDog1!, amount);
@@ -606,9 +623,10 @@ class PosState extends ChangeNotifier {
   }
 
   // Combina el perro seleccionado en 1° con todos los demás en 2°
-  void playAllCombinations() {
+  Future<void> playAllCombinations() async {
     final dog = _selectedDog1 ?? _selectedDog2;
     if (dog == null) return;
+    await _ensureOddsLoaded();
     final amount = _currentBetAmount > 0 ? _currentBetAmount : 25.0;
     for (int other = 1; other <= 6; other++) {
       if (other == dog) continue;
@@ -620,16 +638,18 @@ class PosState extends ChangeNotifier {
   }
 
   // Jugada R: combina el perro seleccionado con todos los demás en ambos sentidos ($25 c/u, total $350)
-  void playR() {
+  Future<void> playR() async {
     final dog = _selectedDog1 ?? _selectedDog2;
     if (dog == null) return;
+    await _ensureOddsLoaded();
     _playCombinedR(dog, 25.0);
   }
 
   // Jugada R/2: igual que R pero cada pale vale $12.5 (total $175)
-  void playR2() {
+  Future<void> playR2() async {
     final dog = _selectedDog1 ?? _selectedDog2;
     if (dog == null) return;
+    await _ensureOddsLoaded();
     _playCombinedR(dog, 12.5);
   }
 
