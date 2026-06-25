@@ -298,6 +298,7 @@ class PosState extends ChangeNotifier {
   Timer? _timer;
   bool _isRefreshing = false;
   int _consecutiveFailures = 0;
+  int _pollCount = 0; // para refrescar live odds periódicamente
   static const int _maxFailuresBeforeError = 3;
 
   // Intervalo adaptativo según estado de carrera
@@ -357,7 +358,14 @@ class PosState extends ChangeNotifier {
             unawaited(_refreshOddsHistory());
             unawaited(_refreshSalesHistory());
           }
-          await _refreshLiveOdds(); // await para que las cuotas estén listas antes del próximo ticket
+          await _refreshLiveOdds();
+        } else if (_raceStatus == 'OPEN') {
+          // Refrescar cuotas de la matriz cada 5 polls para mantenerlas actualizadas
+          _pollCount++;
+          if (_pollCount >= 5) {
+            _pollCount = 0;
+            unawaited(_refreshLiveOdds());
+          }
         }
 
         if (_raceStatus != 'OPEN' &&
@@ -396,7 +404,11 @@ class PosState extends ChangeNotifier {
       for (final row in rows) {
         final betType = row['betType'] as String;
         final selection = row['selection'] as String;
-        odds['$betType:$selection'] = double.parse(row['currentOdds'].toString());
+        // Usar currentOdds primero, finalOdds como fallback, ignorar nulos
+        final rawOdds = row['currentOdds'] ?? row['finalOdds'];
+        if (rawOdds == null) continue;
+        final parsed = double.tryParse(rawOdds.toString()) ?? 0.0;
+        if (parsed > 0) odds['$betType:$selection'] = parsed;
       }
       _liveOdds = odds;
       notifyListeners();
