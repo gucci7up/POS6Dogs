@@ -657,11 +657,16 @@ class PosState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Todos los flujos de creación de jugada pasan por aquí
-  // Se garantiza cargar cuotas del servidor antes de registrar
   Future<void> addPlayToTicket() async {
     if (_currentBetAmount <= 0) return;
-    await _ensureOddsLoaded(); // ← clave: cubre selectDog, addBetAmount y todos los flujos
+    // Siempre cargar cuotas frescas del servidor antes de crear la jugada
+    // Hasta 3 intentos para garantizar que las cuotas EXACTA estén disponibles
+    for (int intento = 0; intento < 3; intento++) {
+      await _refreshLiveOdds();
+      final tieneExacta = _liveOdds.keys.any((k) => k.startsWith('EXACTA:') && (_liveOdds[k] ?? 0) > 1);
+      if (tieneExacta) break;
+      if (intento < 2) await Future.delayed(const Duration(milliseconds: 300));
+    }
     if (_selectedDog1 != null && _selectedDog2 != null && _selectedDog3 != null) {
       _addCalculatedTrifectaPlay(_selectedDog1!, _selectedDog2!, _selectedDog3!, _currentBetAmount);
     } else if (_selectedDog1 != null && _selectedDog2 != null) {
