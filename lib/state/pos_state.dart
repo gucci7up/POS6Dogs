@@ -102,8 +102,7 @@ class PosState extends ChangeNotifier {
   PosState({required ApiClient api, required AuthResult auth})
       : _api = api,
         _auth = auth {
-    _refreshRaceStatus();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _refreshRaceStatus());
+    _scheduleNextPoll();
     unawaited(_refreshSalesHistory());
     unawaited(_refreshResultsHistory());
     unawaited(_refreshOddsHistory());
@@ -295,12 +294,36 @@ class PosState extends ChangeNotifier {
 
   Timer? _timer;
   bool _isRefreshing = false;
+  int _consecutiveFailures = 0;
+  static const int _maxFailuresBeforeError = 3;
+
+  // Intervalo adaptativo según estado de carrera
+  Duration get _pollInterval {
+    switch (_raceStatus) {
+      case 'CLOSED':
+      case 'RUNNING':
+        return const Duration(seconds: 1); // momento crítico
+      case 'OPEN':
+        return const Duration(seconds: 2); // carrera abierta
+      default:
+        return const Duration(seconds: 5); // sin carrera activa
+    }
+  }
+
+  void _scheduleNextPoll() {
+    _timer?.cancel();
+    _timer = Timer(_pollInterval, () async {
+      await _refreshRaceStatus();
+      _scheduleNextPoll(); // reagendar con el intervalo correcto según nuevo estado
+    });
+  }
 
   Future<void> _refreshRaceStatus() async {
-    if (_isRefreshing) return; // evita peticiones simultáneas
+    if (_isRefreshing) return;
     _isRefreshing = true;
     try {
       final status = await _api.getRaceEngineStatus();
+      _consecutiveFailures = 0; // resetear contador al éxito
       _isServerOnline = true;
 
       final currentRaceJson = status['currentRace'] as Map<String, dynamic>?;
@@ -349,8 +372,13 @@ class PosState extends ChangeNotifier {
 
       notifyListeners();
     } catch (_) {
-      _isServerOnline = false;
-      notifyListeners();
+      _consecutiveFailures++;
+      // Solo marcar offline después de 3 fallos consecutivos
+      if (_consecutiveFailures >= _maxFailuresBeforeError) {
+        _isServerOnline = false;
+        notifyListeners();
+      }
+      // Los datos anteriores se mantienen en pantalla (no se borran)
     } finally {
       _isRefreshing = false;
     }
