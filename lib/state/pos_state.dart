@@ -559,22 +559,15 @@ class PosState extends ChangeNotifier {
   }
 
   void _addCalculatedPlay(int dog1, int dog2, double amount) {
-    // Preferir cuota de la matriz si está disponible y es > 1
-    // Si no, calcular con fórmula de probabilidad condicional (mucho mejor que suma)
-    final matrixOdds = _liveOdds['EXACTA:$dog1-$dog2'] ?? 0.0;
-    final odds = matrixOdds > 1
-        ? matrixOdds
-        : _exactaOddsFromWinners(dog1, dog2);
-
+    // Usar ÚNICAMENTE la cuota real de la matriz — nunca inventar valores
+    final odds = _liveOdds['EXACTA:$dog1-$dog2'] ?? 0.0;
+    if (odds <= 1) return; // cuota inválida — no crear la jugada
     _currentTicketPlays.add(Bet(dog1: dog1, dog2: dog2, amount: amount, odds: odds));
   }
 
   void _addCalculatedTrifectaPlay(int dog1, int dog2, int dog3, double amount) {
-    final matrixOdds = _liveOdds['TRIFECTA:$dog1-$dog2-$dog3'] ?? 0.0;
-    final odds = matrixOdds > 1
-        ? matrixOdds
-        : _trifectaOddsFromWinners(dog1, dog2, dog3);
-
+    final odds = _liveOdds['TRIFECTA:$dog1-$dog2-$dog3'] ?? 0.0;
+    if (odds <= 1) return; // cuota inválida — no crear la jugada
     _currentTicketPlays.add(Bet(dog1: dog1, dog2: dog2, dog3: dog3, amount: amount, odds: odds));
   }
 
@@ -657,16 +650,29 @@ class PosState extends ChangeNotifier {
     notifyListeners();
   }
 
+  String? _oddsLoadError;
+  String? get oddsLoadError => _oddsLoadError;
+  void clearOddsLoadError() { _oddsLoadError = null; }
+
   Future<void> addPlayToTicket() async {
     if (_currentBetAmount <= 0) return;
-    // Siempre cargar cuotas frescas del servidor antes de crear la jugada
-    // Hasta 3 intentos para garantizar que las cuotas EXACTA estén disponibles
+
+    // Cargar cuotas frescas — hasta 3 intentos
+    bool oddsOk = false;
     for (int intento = 0; intento < 3; intento++) {
       await _refreshLiveOdds();
       final tieneExacta = _liveOdds.keys.any((k) => k.startsWith('EXACTA:') && (_liveOdds[k] ?? 0) > 1);
-      if (tieneExacta) break;
-      if (intento < 2) await Future.delayed(const Duration(milliseconds: 300));
+      if (tieneExacta) { oddsOk = true; break; }
+      if (intento < 2) await Future.delayed(const Duration(milliseconds: 400));
     }
+
+    if (!oddsOk) {
+      // Bloquear la apuesta — sin cuotas verificadas no se crea nada
+      _oddsLoadError = 'No se pudieron cargar las cuotas del servidor. Intenta de nuevo.';
+      notifyListeners();
+      return;
+    }
+    _oddsLoadError = null;
     if (_selectedDog1 != null && _selectedDog2 != null && _selectedDog3 != null) {
       _addCalculatedTrifectaPlay(_selectedDog1!, _selectedDog2!, _selectedDog3!, _currentBetAmount);
     } else if (_selectedDog1 != null && _selectedDog2 != null) {

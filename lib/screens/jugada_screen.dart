@@ -200,13 +200,20 @@ class _JugadaScreenState extends State<JugadaScreen> {
   }
 
   void _onStateChanged() {
-    if (mounted) {
-      final newLength = widget.state.currentTicketPlays.length;
-      if (newLength != _lastTicketLength) {
-        setState(() {
-          _lastTicketLength = newLength;
-        });
-      }
+    if (!mounted) return;
+    final newLength = widget.state.currentTicketPlays.length;
+    if (newLength != _lastTicketLength) {
+      setState(() { _lastTicketLength = newLength; });
+    }
+    // Mostrar error si las cuotas no se pudieron cargar
+    final err = widget.state.oddsLoadError;
+    if (err != null) {
+      widget.state.clearOddsLoadError();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: const Color(0xFFE53935),
+        duration: const Duration(seconds: 4),
+        content: Text(err, style: const TextStyle(fontFamily: 'DinNextLtPro', fontWeight: FontWeight.bold, fontSize: 15)),
+      ));
     }
   }
 
