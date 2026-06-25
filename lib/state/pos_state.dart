@@ -183,6 +183,7 @@ class PosState extends ChangeNotifier {
   int get countdownSeconds => _countdownSeconds;
 
   String? _currentRaceId;
+  String? get currentRaceId => _currentRaceId;
   String _raceStatus = 'IDLE';
   String get raceStatus => _raceStatus;
 

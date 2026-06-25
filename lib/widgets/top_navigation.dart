@@ -12,7 +12,7 @@ class TopNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<String> tabs = ['JUGADA', 'RESULTADOS', 'CUOTAS', 'VENTAS', 'PREMIOS'];
+    final List<String> tabs = ['JUGADA', 'RESULTADOS', 'CUOTAS', 'VENTAS', 'TICKETS', 'PREMIOS'];
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,

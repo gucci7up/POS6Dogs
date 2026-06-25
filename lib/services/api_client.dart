@@ -166,4 +166,12 @@ class ApiClient {
   Future<void> payTicket(String ticketId) async {
     await _request('POST', '/tickets/$ticketId/pay');
   }
+
+  Future<void> cancelTicket(String ticketId) async {
+    await _request('POST', '/tickets/$ticketId/cancel', body: {'reason': 'Anulado por cajero'});
+  }
+
+  Future<List<dynamic>> getTicketsByRace(String raceId) async {
+    return await _request('GET', '/tickets/race/$raceId') as List<dynamic>;
+  }
 }
