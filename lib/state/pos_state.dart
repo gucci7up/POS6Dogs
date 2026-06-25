@@ -453,21 +453,23 @@ class PosState extends ChangeNotifier {
     return (_x2Dog > 0 && dog == _x2Dog) ? base * 2.0 : base;
   }
 
-  // Cuota "EXACTA": cuota del palé combinado con el siguiente perro
+  // Cuota "EXACTA": usa la cuota real de la matriz si está disponible
   double getExactaOdds(int dog) {
     final other = dog % 6 + 1;
-    return getGanarOdds(dog) + getGanarOdds(other);
+    final matrix = _liveOdds['EXACTA:$dog-$other'] ?? 0.0;
+    return matrix > 0 ? matrix : getGanarOdds(dog) + getGanarOdds(other);
   }
 
   // Cuota exacta de un par específico (dog1 1°, dog2 2°)
   double getExactaOddsPair(int dog1, int dog2) =>
       _liveOdds['EXACTA:$dog1-$dog2'] ?? 0.0;
 
-  // Cuota "TRIFECTA": cuota del trío combinado con los dos siguientes perros
+  // Cuota "TRIFECTA": usa la cuota real de la matriz si está disponible
   double getTrifectaOdds(int dog) {
     final next1 = dog % 6 + 1;
     final next2 = next1 % 6 + 1;
-    return getGanarOdds(dog) + getGanarOdds(next1) + getGanarOdds(next2);
+    final matrix = _liveOdds['TRIFECTA:$dog-$next1-$next2'] ?? 0.0;
+    return matrix > 0 ? matrix : getGanarOdds(dog) + getGanarOdds(next1) + getGanarOdds(next2);
   }
 
   void _addCalculatedPlay(int dog1, int dog2, double amount) {
@@ -623,16 +625,19 @@ class PosState extends ChangeNotifier {
     }
   }
 
-  // Recarga las jugadas de un ticket (perros, monto y cuotas) al ticket actual
+  // Recarga las jugadas de un ticket recalculando cuotas actuales de la matriz
   void repeatTicket(Ticket ticket) {
     for (final play in ticket.plays) {
-      _currentTicketPlays.add(Bet(
-        dog1: play.dog1,
-        dog2: play.dog2,
-        dog3: play.dog3,
-        amount: play.amount,
-        odds: play.odds,
-      ));
+      if (play.dog3 != null) {
+        // TRIFECTA: recalcular con cuota actual de la matriz
+        _addCalculatedTrifectaPlay(play.dog1, play.dog2!, play.dog3!, play.amount);
+      } else if (play.dog2 != null) {
+        // EXACTA: recalcular con cuota actual de la matriz
+        _addCalculatedPlay(play.dog1, play.dog2!, play.amount);
+      } else {
+        // GANADOR: cuota actual del perro
+        _addSinglePlay(play.dog1, play.amount);
+      }
     }
     notifyListeners();
   }
