@@ -70,7 +70,7 @@ class PrintService {
     ];
   }
 
-  // ── Pie de página común ────────────────────────────────────────────────────
+  // ── Pie de página para ticket de jugadas ──────────────────────────────────
 
   static List<pw.Widget> _footer(int widthMm) => [
         pw.SizedBox(height: 6),
@@ -82,6 +82,19 @@ class PrintService {
         pw.Center(child: pw.Text('UNICAMENTE CONTRA LA', style: _reg(size: _s(7, widthMm)))),
         pw.Center(child: pw.Text('PRESENTACION DEL TICKET', style: _reg(size: _s(7, widthMm)))),
         pw.Center(child: pw.Text('ORIGINAL.', style: _reg(size: _s(7, widthMm)))),
+        pw.SizedBox(height: 6),
+        _hr(0.8),
+        pw.Center(child: pw.Text('** MBSPORT RACING DOGS 2026 **', style: _bold(size: _s(7, widthMm)))),
+        pw.Center(child: pw.Text('www.mbsport.lat', style: _reg(size: _s(7, widthMm)))),
+        pw.SizedBox(height: 6),
+      ];
+
+  // ── Pie de página para cuadre diario (ventas) ─────────────────────────────
+
+  static List<pw.Widget> _footerVentas(int widthMm) => [
+        pw.SizedBox(height: 6),
+        _hr(0.8),
+        pw.Center(child: pw.Text('CUADRE DIARIO', style: _bold(size: _s(10, widthMm)))),
         pw.SizedBox(height: 6),
         _hr(0.8),
         pw.Center(child: pw.Text('** MBSPORT RACING DOGS 2026 **', style: _bold(size: _s(7, widthMm)))),
@@ -320,7 +333,7 @@ class PrintService {
               ),
             ),
 
-            ..._footer(paperWidthMm),
+            ..._footerVentas(paperWidthMm),
           ],
         ),
       ),
