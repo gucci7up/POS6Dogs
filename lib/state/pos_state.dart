@@ -471,7 +471,11 @@ class PosState extends ChangeNotifier {
   }
 
   void _addCalculatedPlay(int dog1, int dog2, double amount) {
-    final odds = getGanarOdds(dog1) + getGanarOdds(dog2);
+    // Usar cuota real de la matriz EXACTA; fallback a suma de winners si no hay
+    final matrixOdds = _liveOdds['EXACTA:$dog1-$dog2'] ?? 0.0;
+    final odds = matrixOdds > 0
+        ? matrixOdds
+        : getGanarOdds(dog1) + getGanarOdds(dog2);
 
     _currentTicketPlays.add(Bet(
       dog1: dog1,
@@ -482,7 +486,11 @@ class PosState extends ChangeNotifier {
   }
 
   void _addCalculatedTrifectaPlay(int dog1, int dog2, int dog3, double amount) {
-    final odds = getGanarOdds(dog1) + getGanarOdds(dog2) + getGanarOdds(dog3);
+    // Usar cuota real de la matriz TRIFECTA; fallback a suma de winners si no hay
+    final matrixOdds = _liveOdds['TRIFECTA:$dog1-$dog2-$dog3'] ?? 0.0;
+    final odds = matrixOdds > 0
+        ? matrixOdds
+        : getGanarOdds(dog1) + getGanarOdds(dog2) + getGanarOdds(dog3);
 
     _currentTicketPlays.add(Bet(
       dog1: dog1,
