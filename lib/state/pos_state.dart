@@ -513,54 +513,67 @@ class PosState extends ChangeNotifier {
     return (_x2Dog > 0 && dog == _x2Dog) ? base * 2.0 : base;
   }
 
-  // Cuota "EXACTA": usa la cuota real de la matriz si está disponible
+  // Cuota "EXACTA": usa la cuota real de la matriz si está disponible y > 1
   double getExactaOdds(int dog) {
     final other = dog % 6 + 1;
     final matrix = _liveOdds['EXACTA:$dog-$other'] ?? 0.0;
-    return matrix > 0 ? matrix : getGanarOdds(dog) + getGanarOdds(other);
+    return matrix > 1 ? matrix : _exactaOddsFromWinners(dog, other);
   }
 
   // Cuota exacta de un par específico (dog1 1°, dog2 2°)
-  double getExactaOddsPair(int dog1, int dog2) =>
-      _liveOdds['EXACTA:$dog1-$dog2'] ?? 0.0;
+  double getExactaOddsPair(int dog1, int dog2) {
+    final matrix = _liveOdds['EXACTA:$dog1-$dog2'] ?? 0.0;
+    return matrix > 1 ? matrix : _exactaOddsFromWinners(dog1, dog2);
+  }
 
-  // Cuota "TRIFECTA": usa la cuota real de la matriz si está disponible
+  // Cuota "TRIFECTA": usa la cuota real de la matriz si está disponible y > 1
   double getTrifectaOdds(int dog) {
     final next1 = dog % 6 + 1;
     final next2 = next1 % 6 + 1;
     final matrix = _liveOdds['TRIFECTA:$dog-$next1-$next2'] ?? 0.0;
-    return matrix > 0 ? matrix : getGanarOdds(dog) + getGanarOdds(next1) + getGanarOdds(next2);
+    return matrix > 1 ? matrix : _trifectaOddsFromWinners(dog, next1, next2);
+  }
+
+  // Calcula cuota EXACTA usando probabilidad condicional desde odds WINNER
+  // Igual que la fórmula del backend virtual-odds.service.ts
+  // P(a gana 1°) × P(b gana 2° | a ganó) con margen casa 15%
+  double _exactaOddsFromWinners(int dog1, int dog2) {
+    final pa = (0.9 / getGanarOdds(dog1)).clamp(0.01, 0.99);
+    final pb = (0.9 / getGanarOdds(dog2)).clamp(0.01, 0.99);
+    final pExacta = pa * (pb / (1 - pa).clamp(0.01, 0.99));
+    if (pExacta <= 0) return getGanarOdds(dog1) + getGanarOdds(dog2);
+    return double.parse((0.85 / pExacta).toStringAsFixed(2));
+  }
+
+  // Calcula cuota TRIFECTA usando probabilidad condicional encadenada
+  double _trifectaOddsFromWinners(int dog1, int dog2, int dog3) {
+    final pa = (0.9 / getGanarOdds(dog1)).clamp(0.01, 0.99);
+    final pb = (0.9 / getGanarOdds(dog2)).clamp(0.01, 0.99);
+    final pc = (0.9 / getGanarOdds(dog3)).clamp(0.01, 0.99);
+    final pExacta = pa * (pb / (1 - pa).clamp(0.01, 0.99));
+    final pTrifecta = pExacta * (pc / (1 - pa - pb).clamp(0.01, 0.99));
+    if (pTrifecta <= 0) return getGanarOdds(dog1) + getGanarOdds(dog2) + getGanarOdds(dog3);
+    return double.parse((0.80 / pTrifecta).toStringAsFixed(2));
   }
 
   void _addCalculatedPlay(int dog1, int dog2, double amount) {
-    // Usar cuota real de la matriz EXACTA; fallback a suma de winners si no hay
+    // Preferir cuota de la matriz si está disponible y es > 1
+    // Si no, calcular con fórmula de probabilidad condicional (mucho mejor que suma)
     final matrixOdds = _liveOdds['EXACTA:$dog1-$dog2'] ?? 0.0;
-    final odds = matrixOdds > 0
+    final odds = matrixOdds > 1
         ? matrixOdds
-        : getGanarOdds(dog1) + getGanarOdds(dog2);
+        : _exactaOddsFromWinners(dog1, dog2);
 
-    _currentTicketPlays.add(Bet(
-      dog1: dog1,
-      dog2: dog2,
-      amount: amount,
-      odds: odds,
-    ));
+    _currentTicketPlays.add(Bet(dog1: dog1, dog2: dog2, amount: amount, odds: odds));
   }
 
   void _addCalculatedTrifectaPlay(int dog1, int dog2, int dog3, double amount) {
-    // Usar cuota real de la matriz TRIFECTA; fallback a suma de winners si no hay
     final matrixOdds = _liveOdds['TRIFECTA:$dog1-$dog2-$dog3'] ?? 0.0;
-    final odds = matrixOdds > 0
+    final odds = matrixOdds > 1
         ? matrixOdds
-        : getGanarOdds(dog1) + getGanarOdds(dog2) + getGanarOdds(dog3);
+        : _trifectaOddsFromWinners(dog1, dog2, dog3);
 
-    _currentTicketPlays.add(Bet(
-      dog1: dog1,
-      dog2: dog2,
-      dog3: dog3,
-      amount: amount,
-      odds: odds,
-    ));
+    _currentTicketPlays.add(Bet(dog1: dog1, dog2: dog2, dog3: dog3, amount: amount, odds: odds));
   }
 
   void _addSinglePlay(int dog, double amount) {
