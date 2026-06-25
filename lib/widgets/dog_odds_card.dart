@@ -70,20 +70,28 @@ class _DogOddsCardState extends State<DogOddsCard> {
             // Dog photo con número badge más grande
             Stack(
               children: [
-                Container(
-                  height: 130 * s,
-                  width: double.infinity,
-                  alignment: Alignment.center,
-                  child: Image.asset(
-                    'assets/resources/dog_${widget.number}.png',
-                    height: 130 * s,
-                    width: double.infinity,
-                    fit: BoxFit.contain,
-                  ),
+                // Espacio reservado para el badge arriba + imagen del perro debajo
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(height: 28 * s), // espacio para el badge
+                    Container(
+                      height: 110 * s,
+                      width: double.infinity,
+                      alignment: Alignment.center,
+                      child: Image.asset(
+                        'assets/resources/dog_${widget.number}.png',
+                        height: 110 * s,
+                        width: double.infinity,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ],
                 ),
+                // Badge del número encima, en la esquina superior izquierda
                 Positioned(
                   left: 6 * s,
-                  top: 6 * s,
+                  top: 0,
                   child: Image.asset(
                     'assets/resources/botonnumero${widget.number}.png',
                     height: 54 * s,
