@@ -102,7 +102,9 @@ class PosState extends ChangeNotifier {
   PosState({required ApiClient api, required AuthResult auth})
       : _api = api,
         _auth = auth {
-    _scheduleNextPoll();
+    // Primera consulta inmediata — garantiza que las cuotas de la matriz
+    // estén disponibles antes del primer ticket
+    _refreshRaceStatus().then((_) => _scheduleNextPoll());
     unawaited(_refreshSalesHistory());
     unawaited(_refreshResultsHistory());
     unawaited(_refreshOddsHistory());
@@ -355,7 +357,7 @@ class PosState extends ChangeNotifier {
             unawaited(_refreshOddsHistory());
             unawaited(_refreshSalesHistory());
           }
-          unawaited(_refreshLiveOdds());
+          await _refreshLiveOdds(); // await para que las cuotas estén listas antes del próximo ticket
         }
 
         if (_raceStatus != 'OPEN' &&
