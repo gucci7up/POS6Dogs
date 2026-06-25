@@ -171,15 +171,15 @@ class _VentasScreenState extends State<VentasScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 24.0),
                   child: Row(
                     children: [
-                      const Expanded(flex: 1, child: Text('Nu.', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 13, fontWeight: FontWeight.bold))),
-                      const Expanded(flex: 2, child: Text('Fecha/Hora', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 13, fontWeight: FontWeight.bold))),
-                      const Expanded(flex: 3, child: Text('Jugadas', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 13, fontWeight: FontWeight.bold))),
-                      const Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text('Monto', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 13, fontWeight: FontWeight.bold)))),
-                      const Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text('Inversión', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 13, fontWeight: FontWeight.bold)))),
-                      const Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text('Pagar', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 13, fontWeight: FontWeight.bold)))),
-                      const Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text('Balance', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 13, fontWeight: FontWeight.bold)))),
-                      const Expanded(flex: 2, child: Center(child: Text('Juego', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 13, fontWeight: FontWeight.bold)))),
-                      const Expanded(flex: 1, child: Center(child: Text('Estado', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 13, fontWeight: FontWeight.bold)))),
+                      const Expanded(flex: 1, child: Text('Nu.', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold))),
+                      const Expanded(flex: 2, child: Text('Fecha/Hora', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold))),
+                      const Expanded(flex: 3, child: Text('Jugadas', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold))),
+                      const Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text('Monto', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold)))),
+                      const Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text('Inversión', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold)))),
+                      const Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text('Pagar', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold)))),
+                      const Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text('Balance', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold)))),
+                      const Expanded(flex: 2, child: Center(child: Text('Juego', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold)))),
+                      const Expanded(flex: 1, child: Center(child: Text('Estado', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold)))),
                       Icon(Icons.more_vert, color: Colors.black.withOpacity(0.8), size: 20),
                     ],
                   ),
@@ -229,11 +229,11 @@ class _VentasScreenState extends State<VentasScreen> {
                                 padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 24.0),
                                 child: Row(
                                   children: [
-                                    Expanded(flex: 1, child: Text('${ticket.ticketNumber}', style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold))),
-                                    Expanded(flex: 2, child: Text(ticket.dateTime, style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white70, fontSize: 13))),
-                                    Expanded(flex: 3, child: Text(playsStr, style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                                    Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text(ticket.amount.toStringAsFixed(2), style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)))),
-                                    Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text(ticket.investment.toStringAsFixed(2), style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)))),
+                                    Expanded(flex: 1, child: Text('${ticket.ticketNumber}', style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold))),
+                                    Expanded(flex: 2, child: Text(ticket.dateTime, style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white70, fontSize: 15))),
+                                    Expanded(flex: 3, child: Text(playsStr, style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                    Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text(ticket.amount.toStringAsFixed(2), style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)))),
+                                    Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text(ticket.investment.toStringAsFixed(2), style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)))),
                                     Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: _buildPagarCell(ticket))),
                                     Expanded(
                                       flex: 1,
@@ -250,7 +250,7 @@ class _VentasScreenState extends State<VentasScreen> {
                                         ),
                                       ),
                                     ),
-                                    Expanded(flex: 2, child: Center(child: Text(ticket.game, style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white70, fontSize: 13)))),
+                                    Expanded(flex: 2, child: Center(child: Text(ticket.game, style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white70, fontSize: 15)))),
                                     Expanded(flex: 1, child: Center(child: Image.asset(_getStatusAsset(ticket.status), height: 22, fit: BoxFit.contain))),
                                     const SizedBox(width: 20),
                                   ],
@@ -380,9 +380,9 @@ class _VentasScreenState extends State<VentasScreen> {
     switch (ticket.status) {
       case TicketStatus.winner:
       case TicketStatus.paid:
-        return Text(ticket.pay.toStringAsFixed(2), style: const TextStyle(fontFamily: 'DinNextLtPro', color: Color(0xFF5EE97A), fontSize: 14, fontWeight: FontWeight.bold));
+        return Text(ticket.pay.toStringAsFixed(2), style: const TextStyle(fontFamily: 'DinNextLtPro', color: Color(0xFF5EE97A), fontSize: 16, fontWeight: FontWeight.bold));
       case TicketStatus.approved:
-        return Text(ticket.potentialPrize.toStringAsFixed(2), style: const TextStyle(fontFamily: 'DinNextLtPro', color: Color(0xFFD4AF37), fontSize: 14, fontWeight: FontWeight.bold));
+        return Text(ticket.potentialPrize.toStringAsFixed(2), style: const TextStyle(fontFamily: 'DinNextLtPro', color: Color(0xFFD4AF37), fontSize: 16, fontWeight: FontWeight.bold));
       default:
         return Text('—', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white.withOpacity(0.3), fontSize: 14));
     }
