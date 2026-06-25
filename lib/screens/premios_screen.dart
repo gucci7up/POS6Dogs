@@ -480,7 +480,7 @@ class _NumKeyState extends State<_NumKey> {
 class _TableHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    const style = TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 13, fontWeight: FontWeight.bold);
+    const style = TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold);
     return Container(
       decoration: const BoxDecoration(
         color: Color(0xFF7E7E7E),
@@ -530,11 +530,11 @@ class _TicketRow extends StatelessWidget {
       ),
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 24),
       child: Row(children: [
-        Expanded(flex: 1, child: Text('$number', style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold))),
-        Expanded(flex: 2, child: Text(dateStr, style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white70, fontSize: 13))),
-        Expanded(flex: 3, child: Text(playsStr, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 13))),
-        Expanded(flex: 1, child: Text('$raceNum', style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white70, fontSize: 13))),
-        Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text('\$${total.toStringAsFixed(2)}', style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 13)))),
+        Expanded(flex: 1, child: Text('$number', style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold))),
+        Expanded(flex: 2, child: Text(dateStr, style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white70, fontSize: 16))),
+        Expanded(flex: 3, child: Text(playsStr, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 16))),
+        Expanded(flex: 1, child: Text('$raceNum', style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white70, fontSize: 16))),
+        Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text('\$${total.toStringAsFixed(2)}', style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 16)))),
         Expanded(flex: 1, child: Align(alignment: Alignment.centerRight,
           child: Text('\$${prize.toStringAsFixed(2)}', style: const TextStyle(fontFamily: 'DinNextLtPro', color: Color(0xFF4CAF50), fontSize: 15, fontWeight: FontWeight.bold)))),
         Expanded(flex: 1, child: Center(
@@ -550,7 +550,7 @@ class _TicketRow extends StatelessWidget {
               onPressed: isPaying ? null : onPay,
               child: isPaying
                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('PAGAR', style: TextStyle(fontFamily: 'DinNextLtPro', fontWeight: FontWeight.bold, fontSize: 13)),
+                  : const Text('PAGAR', style: TextStyle(fontFamily: 'DinNextLtPro', fontWeight: FontWeight.bold, fontSize: 15)),
             ),
           ),
         )),
