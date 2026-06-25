@@ -67,16 +67,16 @@ class _DogOddsCardState extends State<DogOddsCard> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Dog photo with number badge overlay
+            // Dog photo con número badge más grande
             Stack(
               children: [
                 Container(
-                  height: 105 * s,
+                  height: 130 * s,
                   width: double.infinity,
                   alignment: Alignment.center,
                   child: Image.asset(
                     'assets/resources/dog_${widget.number}.png',
-                    height: 105 * s,
+                    height: 130 * s,
                     width: double.infinity,
                     fit: BoxFit.contain,
                   ),
@@ -86,15 +86,15 @@ class _DogOddsCardState extends State<DogOddsCard> {
                   top: 6 * s,
                   child: Image.asset(
                     'assets/resources/botonnumero${widget.number}.png',
-                    height: 40 * s,
+                    height: 54 * s,
                     fit: BoxFit.contain,
                   ),
                 ),
               ],
             ),
-            // Name / color
+            // Nombre del perro
             Padding(
-              padding: EdgeInsets.fromLTRB(10 * s, 6 * s, 10 * s, 4 * s),
+              padding: EdgeInsets.fromLTRB(10 * s, 6 * s, 10 * s, 8 * s),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -103,7 +103,7 @@ class _DogOddsCardState extends State<DogOddsCard> {
                     style: TextStyle(
                       fontFamily: 'DinNextLtPro',
                       color: Colors.white,
-                      fontSize: 15 * s,
+                      fontSize: 18 * s,
                       fontWeight: FontWeight.bold,
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -113,26 +113,10 @@ class _DogOddsCardState extends State<DogOddsCard> {
                     style: TextStyle(
                       fontFamily: 'DinNextLtPro',
                       color: Colors.white60,
-                      fontSize: 11 * s,
+                      fontSize: 12 * s,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
-                ],
-              ),
-            ),
-            // Stats row: GANAR / EXACTA / TRIFECTA
-            Container(
-              margin: EdgeInsets.fromLTRB(10 * s, 0, 10 * s, 8 * s),
-              padding: EdgeInsets.symmetric(vertical: 6 * s),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Row(
-                children: [
-                  Expanded(child: _statColumn('GANAR', widget.ganarOdds, s)),
-                  Expanded(child: _statColumn('EXACTA', widget.exactaOdds, s)),
-                  Expanded(child: _statColumn('TRIFECTA', widget.trifectaOdds, s)),
                 ],
               ),
             ),
@@ -167,29 +151,4 @@ class _DogOddsCardState extends State<DogOddsCard> {
     );
   }
 
-  Widget _statColumn(String label, double value, double s) {
-    return Column(
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontFamily: 'DinNextLtPro',
-            color: Colors.white54,
-            fontSize: 10 * s,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        SizedBox(height: 2 * s),
-        Text(
-          value.toStringAsFixed(2),
-          style: TextStyle(
-            fontFamily: 'DinNextLtPro',
-            color: Colors.white,
-            fontSize: 14 * s,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
 }
