@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pos/services/api_client.dart';
+import 'package:pos/services/print_service.dart';
 import 'package:pos/state/pos_state.dart';
 
 class TicketsScreen extends StatefulWidget {
@@ -73,6 +74,17 @@ class _TicketsScreenState extends State<TicketsScreen> {
     setState(() { _cancellingId = ticket['id'] as String; });
     try {
       await _api.cancelTicket(ticket['id'] as String);
+      // Imprimir comprobante de anulación
+      PrintService.printCancelledReceipt(
+        ticketNumber: number as int,
+        ticketId:     ticket['id'] as String,
+        details:      (ticket['details'] as List<dynamic>?) ?? [],
+        totalAmount:  double.tryParse(ticket['totalAmount']?.toString() ?? '0') ?? 0.0,
+        agencyName:   widget.state.agencyName,
+        cashier:      widget.state.currentUser,
+        printerName:  widget.state.selectedPrinter,
+        paperWidthMm: widget.state.selectedPaperWidth,
+      );
       await _load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -159,11 +171,11 @@ class _TicketsScreenState extends State<TicketsScreen> {
             ),
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 24),
             child: const Row(children: [
-              Expanded(flex: 1, child: Text('Nu.', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 14, fontWeight: FontWeight.bold))),
-              Expanded(flex: 4, child: Text('Jugadas', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 14, fontWeight: FontWeight.bold))),
-              Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text('Monto', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 14, fontWeight: FontWeight.bold)))),
-              Expanded(flex: 1, child: Center(child: Text('Estado', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 14, fontWeight: FontWeight.bold)))),
-              Expanded(flex: 1, child: Center(child: Text('Acción', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 14, fontWeight: FontWeight.bold)))),
+              Expanded(flex: 1, child: Text('Nu.', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold))),
+              Expanded(flex: 4, child: Text('Jugadas', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold))),
+              Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text('Monto', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold)))),
+              Expanded(flex: 1, child: Center(child: Text('Estado', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold)))),
+              Expanded(flex: 1, child: Center(child: Text('Acción', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold)))),
             ]),
           ),
 
@@ -199,29 +211,29 @@ class _TicketsScreenState extends State<TicketsScreen> {
                                   padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 24),
                                   child: Row(children: [
                                     Expanded(flex: 1, child: Text('#${t['ticketNumber']}',
-                                      style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold))),
+                                      style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 19, fontWeight: FontWeight.bold))),
                                     Expanded(flex: 4, child: Text(_formatPlays(details),
-                                      style: TextStyle(fontFamily: 'DinNextLtPro', color: status == 'CANCELLED' ? Colors.white38 : Colors.white, fontSize: 14),
+                                      style: TextStyle(fontFamily: 'DinNextLtPro', color: status == 'CANCELLED' ? Colors.white38 : Colors.white, fontSize: 18),
                                       maxLines: 1, overflow: TextOverflow.ellipsis)),
                                     Expanded(flex: 1, child: Align(alignment: Alignment.centerRight,
                                       child: Text('\$${amount.toStringAsFixed(2)}',
-                                        style: TextStyle(fontFamily: 'DinNextLtPro', color: status == 'CANCELLED' ? Colors.white38 : Colors.white, fontSize: 15, fontWeight: FontWeight.bold)))),
+                                        style: TextStyle(fontFamily: 'DinNextLtPro', color: status == 'CANCELLED' ? Colors.white38 : Colors.white, fontSize: 19, fontWeight: FontWeight.bold)))),
                                     Expanded(flex: 1, child: Center(
                                       child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                         decoration: BoxDecoration(color: _statusColor(status).withOpacity(0.15), borderRadius: BorderRadius.circular(12), border: Border.all(color: _statusColor(status).withOpacity(0.5))),
-                                        child: Text(_statusLabel(status), style: TextStyle(fontFamily: 'DinNextLtPro', color: _statusColor(status), fontSize: 11, fontWeight: FontWeight.bold)),
+                                        child: Text(_statusLabel(status), style: TextStyle(fontFamily: 'DinNextLtPro', color: _statusColor(status), fontSize: 14, fontWeight: FontWeight.bold)),
                                       ),
                                     )),
                                     Expanded(flex: 1, child: Center(
                                       child: canCancel
-                                          ? SizedBox(height: 32,
+                                          ? SizedBox(height: 38,
                                               child: ElevatedButton(
-                                                style: ElevatedButton.styleFrom(backgroundColor: _red.withOpacity(0.15), foregroundColor: _red, side: const BorderSide(color: _red), padding: const EdgeInsets.symmetric(horizontal: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
+                                                style: ElevatedButton.styleFrom(backgroundColor: _red.withOpacity(0.15), foregroundColor: _red, side: const BorderSide(color: _red), padding: const EdgeInsets.symmetric(horizontal: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
                                                 onPressed: isCancelling ? null : () => _cancel(t),
                                                 child: isCancelling
-                                                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.red))
-                                                    : const Text('ANULAR', style: TextStyle(fontFamily: 'DinNextLtPro', fontWeight: FontWeight.bold, fontSize: 12)),
+                                                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.red))
+                                                    : const Text('ANULAR', style: TextStyle(fontFamily: 'DinNextLtPro', fontWeight: FontWeight.bold, fontSize: 15)),
                                               ))
                                           : const SizedBox.shrink(),
                                     )),
@@ -239,11 +251,11 @@ class _TicketsScreenState extends State<TicketsScreen> {
               decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), border: Border(top: BorderSide(color: _gold.withOpacity(0.3)))),
               child: Row(children: [
                 Text('${_tickets.where((t) => t['status'] != 'CANCELLED').length} tickets activos',
-                  style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white70, fontSize: 14)),
+                  style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white70, fontSize: 18)),
                 const Spacer(),
                 Text(
                   'Total: \$${_tickets.where((t) => t['status'] != 'CANCELLED').fold(0.0, (s, t) => s + (double.tryParse(t['totalAmount']?.toString() ?? '0') ?? 0.0)).toStringAsFixed(2)}',
-                  style: const TextStyle(fontFamily: 'DinNextLtPro', color: _gold, fontSize: 16, fontWeight: FontWeight.bold)),
+                  style: const TextStyle(fontFamily: 'DinNextLtPro', color: _gold, fontSize: 20, fontWeight: FontWeight.bold)),
               ]),
             ),
           ],

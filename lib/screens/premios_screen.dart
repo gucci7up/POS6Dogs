@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pos/services/api_client.dart';
+import 'package:pos/services/print_service.dart';
 import 'package:pos/state/pos_state.dart';
 
 class PremiosScreen extends StatefulWidget {
@@ -118,6 +119,17 @@ class _PremiosScreenState extends State<PremiosScreen> {
         _isPaying = false;
         _payingTicketId = null;
       });
+      // Imprimir comprobante de pago — solo la jugada ganadora
+      PrintService.printPaidReceipt(
+        ticketNumber:  number as int,
+        ticketId:      ticketId,
+        prizeAmount:   prize,
+        details:       _winningDetails(ticket),
+        agencyName:    widget.state.agencyName,
+        cashier:       widget.state.currentUser,
+        printerName:   widget.state.selectedPrinter,
+        paperWidthMm:  widget.state.selectedPaperWidth,
+      );
     } on ApiException catch (e) {
       setState(() { _error = e.message; _isPaying = false; _payingTicketId = null; });
     } catch (_) {
@@ -127,13 +139,41 @@ class _PremiosScreenState extends State<PremiosScreen> {
 
   String _formatPlays(List<dynamic> details) {
     return details.map((d) {
-      final sel = d['selection'] as String;
-      final amt = double.tryParse(d['amount']?.toString() ?? '0') ?? 0.0;
+      final sel  = d['selection'] as String;
+      final amt  = double.tryParse(d['amount']?.toString() ?? '0') ?? 0.0;
       final type = d['betType'] as String? ?? '';
       final prefix = type == 'TRIFECTA' ? 'T:' : type == 'WINNER' ? 'G:' : '';
       return '$prefix$sel (\$${amt.toInt()})';
     }).join(', ');
   }
+
+  // Retorna solo la(s) jugada(s) que coinciden con el resultado de la carrera
+  List<dynamic> _winningDetails(Map<String, dynamic> ticket) {
+    final details   = (ticket['details'] as List<dynamic>?) ?? [];
+    final resultado = ticket['race']?['resultado'] as String? ?? '';
+    final parts     = resultado.split('-');
+    if (parts.length < 2) return details;
+
+    final w1 = parts[0];
+    final w2 = parts.length > 1 ? parts[1] : '';
+    final w3 = parts.length > 2 ? parts[2] : '';
+
+    final winning = details.where((d) {
+      final type = d['betType'] as String? ?? '';
+      final sel  = d['selection'] as String? ?? '';
+      switch (type) {
+        case 'WINNER':   return sel == w1;
+        case 'EXACTA':   return sel == '$w1-$w2';
+        case 'TRIFECTA': return sel == '$w1-$w2-$w3';
+        default:         return false;
+      }
+    }).toList();
+
+    return winning.isNotEmpty ? winning : details;
+  }
+
+  String _winningPlaysStr(Map<String, dynamic> ticket) =>
+      _formatPlays(_winningDetails(ticket));
 
   @override
   Widget build(BuildContext context) {
@@ -198,7 +238,7 @@ class _PremiosScreenState extends State<PremiosScreen> {
           if (_searchedTicket != null) ...[
             _TicketCard(
               ticket: _searchedTicket!,
-              playsStr: _formatPlays((_searchedTicket!['details'] as List<dynamic>?) ?? []),
+              playsStr: _winningPlaysStr(_searchedTicket!),
               isPaying: _payingTicketId == _searchedTicket!['id'],
               onPay: _searchedTicket!['status'] == 'WON' ? () => _payTicket(_searchedTicket!) : null,
             ),
@@ -226,7 +266,7 @@ class _PremiosScreenState extends State<PremiosScreen> {
                             final t = _pendingTickets[i];
                             return _TicketRow(
                               ticket: t,
-                              playsStr: _formatPlays((t['details'] as List<dynamic>?) ?? []),
+                              playsStr: _winningPlaysStr(t),
                               isEven: i % 2 == 0,
                               isPaying: _payingTicketId == t['id'],
                               onPay: () => _payTicket(t),
@@ -268,9 +308,9 @@ class _PremiosScreenState extends State<PremiosScreen> {
           Text('${_pendingTickets.length} ticket${_pendingTickets.length != 1 ? 's' : ''} pendientes',
             style: const TextStyle(color: Colors.white70, fontFamily: 'DinNextLtPro', fontSize: 14)),
           const Spacer(),
-          const Text('Total a pagar: ', style: TextStyle(color: Colors.white70, fontFamily: 'DinNextLtPro', fontSize: 16)),
+          const Text('Total a pagar: ', style: TextStyle(color: Colors.white70, fontFamily: 'DinNextLtPro', fontSize: 20)),
           Text('\$${total.toStringAsFixed(2)}',
-            style: const TextStyle(color: _gold, fontFamily: 'DinNextLtPro', fontSize: 20, fontWeight: FontWeight.bold)),
+            style: const TextStyle(color: _gold, fontFamily: 'DinNextLtPro', fontSize: 24, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -480,7 +520,7 @@ class _NumKeyState extends State<_NumKey> {
 class _TableHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    const style = TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold);
+    const style = TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 22, fontWeight: FontWeight.bold);
     return Container(
       decoration: const BoxDecoration(
         color: Color(0xFF7E7E7E),
@@ -530,27 +570,27 @@ class _TicketRow extends StatelessWidget {
       ),
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 24),
       child: Row(children: [
-        Expanded(flex: 1, child: Text('$number', style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold))),
-        Expanded(flex: 2, child: Text(dateStr, style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white70, fontSize: 16))),
-        Expanded(flex: 3, child: Text(playsStr, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 16))),
-        Expanded(flex: 1, child: Text('$raceNum', style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white70, fontSize: 16))),
-        Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text('\$${total.toStringAsFixed(2)}', style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 16)))),
+        Expanded(flex: 1, child: Text('$number', style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold))),
+        Expanded(flex: 2, child: Text(dateStr, style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white70, fontSize: 20))),
+        Expanded(flex: 3, child: Text(playsStr, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 20))),
+        Expanded(flex: 1, child: Text('$raceNum', style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white70, fontSize: 20))),
+        Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text('\$${total.toStringAsFixed(2)}', style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 20)))),
         Expanded(flex: 1, child: Align(alignment: Alignment.centerRight,
-          child: Text('\$${prize.toStringAsFixed(2)}', style: const TextStyle(fontFamily: 'DinNextLtPro', color: Color(0xFF4CAF50), fontSize: 15, fontWeight: FontWeight.bold)))),
+          child: Text('\$${prize.toStringAsFixed(2)}', style: const TextStyle(fontFamily: 'DinNextLtPro', color: Color(0xFF4CAF50), fontSize: 20, fontWeight: FontWeight.bold)))),
         Expanded(flex: 1, child: Center(
           child: SizedBox(
-            height: 34,
+            height: 40,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF4CAF50),
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 18),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
               ),
               onPressed: isPaying ? null : onPay,
               child: isPaying
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('PAGAR', style: TextStyle(fontFamily: 'DinNextLtPro', fontWeight: FontWeight.bold, fontSize: 15)),
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('PAGAR', style: TextStyle(fontFamily: 'DinNextLtPro', fontWeight: FontWeight.bold, fontSize: 18)),
             ),
           ),
         )),

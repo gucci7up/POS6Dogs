@@ -21,19 +21,17 @@ void main() async {
     await windowManager.ensureInitialized();
 
     WindowOptions windowOptions = const WindowOptions(
-      size: Size(1920, 1080),
-      minimumSize: Size(1024, 768),
+      size: Size(1280, 768),
+      minimumSize: Size(800, 600),
       center: true,
       backgroundColor: Colors.transparent,
       skipTaskbar: false,
-      titleBarStyle:
-          TitleBarStyle.hidden, // sin bordes; barra propia en DesktopLayout
+      titleBarStyle: TitleBarStyle.hidden,
     );
 
     windowManager.waitUntilReadyToShow(windowOptions, () async {
       await windowManager.show();
       await windowManager.focus();
-      await windowManager.maximize();
     });
   }
 
@@ -75,7 +73,7 @@ class _RootScreenState extends State<RootScreen> {
   bool _sessionLocked = false;
   Timer? _inactivityTimer;
 
-  static const _inactivityTimeout = Duration(minutes: 5);
+  static const _inactivityTimeout = Duration(hours: 8);
 
   @override
   void dispose() {

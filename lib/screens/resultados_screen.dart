@@ -183,6 +183,7 @@ class _ResultadosScreenState extends State<ResultadosScreen> {
                       widget.state.resultsHistory,
                       widget.state.agencyName,
                       widget.state.currentUser,
+                      paperWidthMm: widget.state.selectedPaperWidth,
                     );
                   },
                   child: Container(

@@ -6,6 +6,21 @@ import 'package:pos/state/pos_state.dart';
 
 /// Genera e imprime recibos en formato térmico 58 mm u 80 mm.
 class PrintService {
+  // Font cache — se carga una sola vez
+  static pw.Font? _fontRegular;
+  static pw.Font? _fontBold;
+
+  static Future<void> _loadFonts() async {
+    if (_fontRegular != null) return;
+    try {
+      final data = await rootBundle.load('assets/fonts/din-next-lt-pro-regular.ttf');
+      _fontRegular = pw.Font.ttf(data);
+      _fontBold    = pw.Font.ttf(data); // mismo font; el bold lo simulamos con fontWeight
+    } catch (_) {
+      // Si falla, usa la fuente por defecto del PDF
+    }
+  }
+
   static PdfPageFormat _fmt(int widthMm) => widthMm <= 58
       ? PdfPageFormat(
           widthMm * PdfPageFormat.mm,
@@ -21,17 +36,22 @@ class PrintService {
           marginAll: 5 * PdfPageFormat.mm,
         );
 
-  // Reduce tamaño de fuente en 1pt para papel de 58mm, mínimo 7pt
+  // 58mm → tamaño - 1pt; mínimo 7pt
   static double _s(double size, int widthMm) =>
       widthMm <= 58 ? (size - 1).clamp(7, 20) : size;
 
-  // ── Helpers de estilo ──────────────────────────────────────────────────────
+  // ── Helpers de estilo con tipografía DinNextLtPro ─────────────────────────
 
-  static pw.TextStyle _bold({double size = 9}) =>
-      pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: size);
+  static pw.TextStyle _bold({double size = 9}) => pw.TextStyle(
+        font: _fontBold,
+        fontWeight: pw.FontWeight.bold,
+        fontSize: size,
+      );
 
-  static pw.TextStyle _reg({double size = 9}) =>
-      pw.TextStyle(fontSize: size);
+  static pw.TextStyle _reg({double size = 9}) => pw.TextStyle(
+        font: _fontRegular,
+        fontSize: size,
+      );
 
   static String _date(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}/'
@@ -144,6 +164,7 @@ class PrintService {
     String cashier, {
     int paperWidthMm = 80,
   }) async {
+    await _loadFonts();
     final pdf = pw.Document(title: 'Resultados del Dia');
 
     pdf.addPage(
@@ -353,6 +374,7 @@ class PrintService {
     String? ticketId,
     String printerName = 'Impresora predeterminada',
     int paperWidthMm = 80,
+    bool isReprint = false,
   }) async {
     final pdf = pw.Document(title: 'Ticket #${ticket.ticketNumber}');
 
@@ -396,20 +418,25 @@ class PrintService {
             pw.SizedBox(height: 3),
             _hr(),
 
-            // Tabla de jugadas: # | Tipo | Num | Cuota | Monto
-            // Todos los anchos fijos para evitar que Monto se corte
+            // Tabla de jugadas: # | Tipo | Num | Cuota | Monto | Premio
+            // 80mm usable ≈198pt: 9+24+20+26+30+36 = 145pt
+            // 58mm usable ≈136pt: 8+20+17+22+26+30 = 123pt
             pw.Row(children: [
-              pw.SizedBox(width: 10,  child: pw.Text('#',     style: _bold(size: 7))),
-              pw.SizedBox(width: paperWidthMm <= 58 ? 30 : 40,
-                                       child: pw.Text('Tipo',  style: _bold(size: 7))),
-              pw.SizedBox(width: paperWidthMm <= 58 ? 20 : 26,
-                                       child: pw.Text('Num',   style: _bold(size: 7))),
-              pw.SizedBox(width: paperWidthMm <= 58 ? 24 : 30,
-                          child: pw.Align(alignment: pw.Alignment.centerRight,
-                              child: pw.Text('Cuota', style: _bold(size: 7)))),
-              pw.SizedBox(width: paperWidthMm <= 58 ? 36 : 46,
-                          child: pw.Align(alignment: pw.Alignment.centerRight,
-                              child: pw.Text('Monto', style: _bold(size: 7)))),
+              pw.SizedBox(width: paperWidthMm <= 58 ?  8 :  9,
+                  child: pw.Text('#',      style: _bold(size: paperWidthMm <= 58 ? 7 : 8))),
+              pw.SizedBox(width: paperWidthMm <= 58 ? 20 : 24,
+                  child: pw.Text('Tipo',   style: _bold(size: paperWidthMm <= 58 ? 7 : 8))),
+              pw.SizedBox(width: paperWidthMm <= 58 ? 17 : 20,
+                  child: pw.Text('Num',    style: _bold(size: paperWidthMm <= 58 ? 7 : 8))),
+              pw.SizedBox(width: paperWidthMm <= 58 ? 22 : 26,
+                  child: pw.Align(alignment: pw.Alignment.centerRight,
+                      child: pw.Text('Cuota',  style: _bold(size: paperWidthMm <= 58 ? 7 : 8)))),
+              pw.SizedBox(width: paperWidthMm <= 58 ? 26 : 30,
+                  child: pw.Align(alignment: pw.Alignment.centerRight,
+                      child: pw.Text('Monto',  style: _bold(size: paperWidthMm <= 58 ? 7 : 8)))),
+              pw.SizedBox(width: paperWidthMm <= 58 ? 30 : 36,
+                  child: pw.Align(alignment: pw.Alignment.centerRight,
+                      child: pw.Text('Premio', style: _bold(size: paperWidthMm <= 58 ? 7 : 8)))),
             ]),
             _hr(0.3),
             ...ticket.plays.asMap().entries.map((entry) {
@@ -419,31 +446,37 @@ class PrintService {
               String tipo;
               if (play.dog3 != null) {
                 sel  = '${play.dog1}-${play.dog2}-${play.dog3}';
-                tipo = 'Tripleta';
+                tipo = 'Trip.';
               } else if (play.dog2 != null) {
                 sel  = '${play.dog1}-${play.dog2}';
                 tipo = 'Pale';
               } else {
                 sel  = '${play.dog1}';
-                tipo = 'Quiniela';
+                tipo = 'Gan.';
               }
+              final premio = play.amount * play.odds;
+              final fs = paperWidthMm <= 58 ? 7.0 : 8.0;
               return pw.Padding(
-                padding: const pw.EdgeInsets.symmetric(vertical: 1.5),
+                padding: const pw.EdgeInsets.symmetric(vertical: 2),
                 child: pw.Row(children: [
-                  pw.SizedBox(width: 10,
-                      child: pw.Text('$i', style: _reg(size: 7))),
-                  pw.SizedBox(width: paperWidthMm <= 58 ? 30 : 40,
-                      child: pw.Text(tipo, style: _bold(size: 7))),
-                  pw.SizedBox(width: paperWidthMm <= 58 ? 20 : 26,
-                      child: pw.Text(sel,  style: _reg(size: 7))),
-                  pw.SizedBox(width: paperWidthMm <= 58 ? 24 : 30,
+                  pw.SizedBox(width: paperWidthMm <= 58 ?  8 :  9,
+                      child: pw.Text('$i', style: _reg(size: fs))),
+                  pw.SizedBox(width: paperWidthMm <= 58 ? 20 : 24,
+                      child: pw.Text(tipo, style: _bold(size: fs))),
+                  pw.SizedBox(width: paperWidthMm <= 58 ? 17 : 20,
+                      child: pw.Text(sel,  style: _reg(size: fs))),
+                  pw.SizedBox(width: paperWidthMm <= 58 ? 22 : 26,
                       child: pw.Align(alignment: pw.Alignment.centerRight,
                           child: pw.Text(play.odds.toStringAsFixed(2),
-                              style: _reg(size: 7)))),
-                  pw.SizedBox(width: paperWidthMm <= 58 ? 36 : 46,
+                              style: _reg(size: fs)))),
+                  pw.SizedBox(width: paperWidthMm <= 58 ? 26 : 30,
                       child: pw.Align(alignment: pw.Alignment.centerRight,
                           child: pw.Text('\$${_money(play.amount)}',
-                              style: _bold(size: 7)))),
+                              style: _bold(size: fs)))),
+                  pw.SizedBox(width: paperWidthMm <= 58 ? 30 : 36,
+                      child: pw.Align(alignment: pw.Alignment.centerRight,
+                          child: pw.Text('\$${_money(premio)}',
+                              style: _bold(size: fs)))),
                 ]),
               );
             }),
@@ -451,8 +484,6 @@ class PrintService {
 
             pw.SizedBox(height: 3),
             _summaryRow('Total apostado', '\$${_money(ticket.amount)}', highlight: true, widthMm: paperWidthMm),
-            pw.SizedBox(height: 2),
-            _summaryRow('Premio potencial', '\$${_money(ticket.potentialPrize)}', widthMm: paperWidthMm),
             pw.SizedBox(height: 3),
             _hr(),
 
@@ -472,6 +503,22 @@ class PrintService {
                 child: pw.Text(
                   'Escanea para ver tu resultado',
                   style: _reg(size: _s(7, paperWidthMm)),
+                ),
+              ),
+              pw.SizedBox(height: 2),
+            ],
+
+            // Marca de reimpresión
+            if (isReprint) ...[
+              pw.SizedBox(height: 6),
+              _hr(0.8),
+              pw.Center(
+                child: pw.Text(
+                  'COPIA - REIMPRESIÓN',
+                  style: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold,
+                    fontSize: _s(14, paperWidthMm),
+                  ),
                 ),
               ),
               pw.SizedBox(height: 2),
@@ -498,6 +545,269 @@ class PrintService {
       );
     } else {
       // Fallback: mostrar diálogo si no se encuentra ninguna impresora
+      await Printing.layoutPdf(onLayout: (_) => pdf.save());
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // COMPROBANTE DE PAGO
+  // ══════════════════════════════════════════════════════════════════════════
+
+  static Future<void> printPaidReceipt({
+    required int ticketNumber,
+    required String ticketId,
+    required double prizeAmount,
+    required List<dynamic> details,
+    required String agencyName,
+    required String cashier,
+    String printerName = 'Impresora predeterminada',
+    int paperWidthMm = 80,
+  }) async {
+    final pdf = pw.Document(title: 'Comprobante Pago #$ticketNumber');
+    final now = DateTime.now();
+
+    final logoBytes = await rootBundle.load('assets/resources/logo_principal.png');
+    final logoImage = pw.MemoryImage(logoBytes.buffer.asUint8List());
+    final logoWidth  = paperWidthMm <= 58 ? 100.0 : 150.0;
+    final logoHeight = paperWidthMm <= 58 ?  50.0 :  75.0;
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: _fmt(paperWidthMm),
+        build: (context) => pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            // Logo
+            pw.Center(
+              child: pw.Image(logoImage, width: logoWidth, height: logoHeight, fit: pw.BoxFit.contain),
+            ),
+            pw.SizedBox(height: 4),
+            _hr(0.8),
+            pw.Center(child: pw.Text('TICKET PAGADO', style: _bold(size: _s(12, paperWidthMm)))),
+            _hr(0.8),
+            pw.SizedBox(height: 3),
+
+            _infoRow('Fecha',    _date(now),   paperWidthMm),
+            _infoRow('Hora',     _time(now),   paperWidthMm),
+            _infoRow('Agencia',  agencyName,   paperWidthMm),
+            _infoRow('Cajero',   cashier,      paperWidthMm),
+            pw.SizedBox(height: 3),
+            _hr(),
+
+            _infoRow('#TICKET',  '$ticketNumber', paperWidthMm),
+            pw.SizedBox(height: 2),
+            // ID truncado para que quepa en 80mm
+            pw.Text('ID: $ticketId',
+              style: _reg(size: _s(6, paperWidthMm)),
+              maxLines: 2,
+            ),
+            pw.SizedBox(height: 3),
+            _hr(),
+
+            // Jugadas
+            pw.Text('JUGADAS:', style: _bold(size: _s(8, paperWidthMm))),
+            pw.SizedBox(height: 3),
+            // Cabecera jugadas
+            pw.Row(children: [
+              pw.SizedBox(width: 12, child: pw.Text('#',     style: _bold(size: 7))),
+              pw.SizedBox(width: paperWidthMm <= 58 ? 28 : 38,
+                  child: pw.Text('Tipo',  style: _bold(size: 7))),
+              pw.SizedBox(width: paperWidthMm <= 58 ? 18 : 24,
+                  child: pw.Text('Num',   style: _bold(size: 7))),
+              pw.SizedBox(width: paperWidthMm <= 58 ? 22 : 28,
+                  child: pw.Align(alignment: pw.Alignment.centerRight,
+                      child: pw.Text('Cuota', style: _bold(size: 7)))),
+              pw.SizedBox(width: 4),
+              pw.Expanded(child: pw.Align(alignment: pw.Alignment.centerRight,
+                  child: pw.Text('Monto', style: _bold(size: 7)))),
+            ]),
+            _hr(0.2),
+            ...details.asMap().entries.map((e) {
+              final i    = e.key + 1;
+              final d    = e.value as Map<String, dynamic>;
+              final type = d['betType'] as String? ?? '';
+              final sel  = d['selection'] as String? ?? '';
+              final amt  = double.tryParse(d['amount']?.toString() ?? '0') ?? 0.0;
+              final odds = double.tryParse(d['odds']?.toString() ?? '0') ?? 0.0;
+              final tipo = type == 'TRIFECTA' ? 'Tripleta'
+                         : type == 'WINNER'   ? 'Quiniela'
+                         : 'Pale';
+              return pw.Padding(
+                padding: const pw.EdgeInsets.symmetric(vertical: 1.5),
+                child: pw.Row(children: [
+                  pw.SizedBox(width: 12, child: pw.Text('$i', style: _reg(size: 7))),
+                  pw.SizedBox(width: paperWidthMm <= 58 ? 28 : 38,
+                      child: pw.Text(tipo, style: _bold(size: 7))),
+                  pw.SizedBox(width: paperWidthMm <= 58 ? 18 : 24,
+                      child: pw.Text(sel,  style: _reg(size: 7))),
+                  pw.SizedBox(width: paperWidthMm <= 58 ? 22 : 28,
+                      child: pw.Align(alignment: pw.Alignment.centerRight,
+                          child: pw.Text(odds.toStringAsFixed(2), style: _reg(size: 7)))),
+                  pw.SizedBox(width: 4),
+                  pw.Expanded(child: pw.Align(
+                    alignment: pw.Alignment.centerRight,
+                    child: pw.Text('\$${_money(amt)}', style: _bold(size: 7)),
+                  )),
+                ]),
+              );
+            }),
+            _hr(0.3),
+            pw.SizedBox(height: 6),
+
+            // Premio destacado
+            pw.Center(
+              child: pw.Container(
+                padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(width: 1),
+                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                ),
+                child: pw.Column(children: [
+                  pw.Text('PREMIO PAGADO', style: _bold(size: _s(9, paperWidthMm))),
+                  pw.SizedBox(height: 2),
+                  pw.Text('\$${_money(prizeAmount)}', style: _bold(size: _s(14, paperWidthMm))),
+                ]),
+              ),
+            ),
+            pw.SizedBox(height: 6),
+            _hr(0.8),
+            pw.Center(child: pw.Text('** MBSPORT RACING DOGS 2026 **', style: _bold(size: _s(7, paperWidthMm)))),
+            pw.Center(child: pw.Text('www.mbsport.lat', style: _reg(size: _s(7, paperWidthMm)))),
+            pw.SizedBox(height: 6),
+          ],
+        ),
+      ),
+    );
+
+    final printers = await Printing.listPrinters();
+    Printer? target;
+    if (printerName != 'Impresora predeterminada') {
+      target = printers.where((p) => p.name.contains(printerName)).firstOrNull;
+    }
+    target ??= printers.where((p) => p.isDefault).firstOrNull ?? printers.firstOrNull;
+
+    if (target != null) {
+      await Printing.directPrintPdf(printer: target, onLayout: (_) async => await pdf.save());
+    } else {
+      await Printing.layoutPdf(onLayout: (_) => pdf.save());
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // COMPROBANTE DE ANULACIÓN
+  // ══════════════════════════════════════════════════════════════════════════
+
+  static Future<void> printCancelledReceipt({
+    required int ticketNumber,
+    required String ticketId,
+    required List<dynamic> details,
+    required double totalAmount,
+    required String agencyName,
+    required String cashier,
+    String printerName = 'Impresora predeterminada',
+    int paperWidthMm = 80,
+  }) async {
+    await _loadFonts();
+    final pdf = pw.Document(title: 'Anulación #$ticketNumber');
+    final now = DateTime.now();
+
+    final logoBytes = await rootBundle.load('assets/resources/logo_principal.png');
+    final logoImage = pw.MemoryImage(logoBytes.buffer.asUint8List());
+    final logoWidth  = paperWidthMm <= 58 ? 100.0 : 150.0;
+    final logoHeight = paperWidthMm <= 58 ?  50.0 :  75.0;
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: _fmt(paperWidthMm),
+        build: (context) => pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Center(child: pw.Image(logoImage, width: logoWidth, height: logoHeight, fit: pw.BoxFit.contain)),
+            pw.SizedBox(height: 4),
+            _hr(0.8),
+            pw.Center(child: pw.Text('COMPROBANTE DE ANULACIÓN', style: _bold(size: _s(10, paperWidthMm)))),
+            _hr(0.8),
+            pw.SizedBox(height: 3),
+
+            _infoRow('Fecha',   _date(now),   paperWidthMm),
+            _infoRow('Hora',    _time(now),   paperWidthMm),
+            _infoRow('Agencia', agencyName,   paperWidthMm),
+            _infoRow('Cajero',  cashier,      paperWidthMm),
+            pw.SizedBox(height: 3),
+            _hr(),
+
+            _infoRow('#TICKET', '$ticketNumber', paperWidthMm),
+            pw.SizedBox(height: 2),
+            pw.Text('ID: $ticketId', style: _reg(size: _s(6, paperWidthMm)), maxLines: 2),
+            pw.SizedBox(height: 4),
+            _hr(),
+
+            // Jugadas
+            pw.Text('JUGADAS:', style: _bold(size: _s(8, paperWidthMm))),
+            pw.SizedBox(height: 3),
+            ...details.asMap().entries.map((e) {
+              final i    = e.key + 1;
+              final d    = e.value as Map<String, dynamic>;
+              final type = d['betType'] as String? ?? '';
+              final sel  = d['selection'] as String? ?? '';
+              final amt  = double.tryParse(d['amount']?.toString() ?? '0') ?? 0.0;
+              final tipo = type == 'TRIFECTA' ? 'Tripleta' : type == 'WINNER' ? 'Quiniela' : 'Pale';
+              return pw.Padding(
+                padding: const pw.EdgeInsets.symmetric(vertical: 1.5),
+                child: pw.Row(children: [
+                  pw.SizedBox(width: 12, child: pw.Text('$i', style: _reg(size: 7))),
+                  pw.SizedBox(width: paperWidthMm <= 58 ? 32 : 42,
+                      child: pw.Text(tipo, style: _bold(size: 7))),
+                  pw.SizedBox(width: paperWidthMm <= 58 ? 22 : 28,
+                      child: pw.Text(sel, style: _reg(size: 7))),
+                  pw.Expanded(child: pw.Align(
+                    alignment: pw.Alignment.centerRight,
+                    child: pw.Text('\$${_money(amt)}', style: _reg(size: 7)),
+                  )),
+                ]),
+              );
+            }),
+            _hr(0.3),
+            pw.SizedBox(height: 4),
+            _summaryRow('Total apostado', '\$${_money(totalAmount)}', highlight: true, widthMm: paperWidthMm),
+            pw.SizedBox(height: 8),
+            _hr(0.8),
+
+            // Marca ANULADO en grande
+            pw.SizedBox(height: 6),
+            pw.Center(
+              child: pw.Container(
+                padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(width: 2),
+                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                ),
+                child: pw.Text(
+                  '** ANULADO **',
+                  style: _bold(size: _s(18, paperWidthMm)),
+                ),
+              ),
+            ),
+            pw.SizedBox(height: 6),
+            _hr(0.8),
+            pw.Center(child: pw.Text('** MBSPORT RACING DOGS 2026 **', style: _bold(size: _s(7, paperWidthMm)))),
+            pw.Center(child: pw.Text('www.mbsport.lat', style: _reg(size: _s(7, paperWidthMm)))),
+            pw.SizedBox(height: 6),
+          ],
+        ),
+      ),
+    );
+
+    final printers = await Printing.listPrinters();
+    Printer? target;
+    if (printerName != 'Impresora predeterminada') {
+      target = printers.where((p) => p.name.contains(printerName)).firstOrNull;
+    }
+    target ??= printers.where((p) => p.isDefault).firstOrNull ?? printers.firstOrNull;
+
+    if (target != null) {
+      await Printing.directPrintPdf(printer: target, onLayout: (_) async => await pdf.save());
+    } else {
       await Printing.layoutPdf(onLayout: (_) => pdf.save());
     }
   }

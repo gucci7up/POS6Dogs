@@ -182,4 +182,8 @@ class ApiClient {
   Future<List<dynamic>> getTicketsByRace(String raceId) async {
     return await _request('GET', '/tickets/race/$raceId') as List<dynamic>;
   }
+
+  Future<List<dynamic>> getVideos() async {
+    return await _request('GET', '/videos?activo=true') as List<dynamic>;
+  }
 }

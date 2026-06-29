@@ -272,7 +272,7 @@ class _JugadaScreenState extends State<JugadaScreen> {
                                     ganarOdds: state.getGanarOdds(dogNum),
                                     exactaOdds: state.getExactaOdds(dogNum),
                                     trifectaOdds: state.getTrifectaOdds(dogNum),
-                                    width: 175,
+                                    width: 210,
                                     isSelected: isSelected,
                                     isDimmed: isDimmed,
                                     onTap: state.isSalesOpen
@@ -318,7 +318,7 @@ class _JugadaScreenState extends State<JugadaScreen> {
                                     ganarOdds: state.getGanarOdds(dogNum),
                                     exactaOdds: state.getExactaOdds(dogNum),
                                     trifectaOdds: state.getTrifectaOdds(dogNum),
-                                    width: 175,
+                                    width: 210,
                                     isSelected: isSelected,
                                     isDimmed: isDimmed,
                                     onTap: state.isSalesOpen
@@ -364,7 +364,7 @@ class _JugadaScreenState extends State<JugadaScreen> {
                                     ganarOdds: state.getGanarOdds(dogNum),
                                     exactaOdds: state.getExactaOdds(dogNum),
                                     trifectaOdds: state.getTrifectaOdds(dogNum),
-                                    width: 175,
+                                    width: 210,
                                     isSelected: isSelected,
                                     isDimmed: isDimmed,
                                     onTap: state.isSalesOpen

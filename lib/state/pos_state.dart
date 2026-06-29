@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pos/services/api_client.dart';
 import 'package:pos/services/local_video_server.dart';
 import 'package:pos/services/video_sync_service.dart';
@@ -108,6 +109,7 @@ class PosState extends ChangeNotifier {
     unawaited(_refreshSalesHistory());
     unawaited(_refreshResultsHistory());
     unawaited(_refreshOddsHistory());
+    unawaited(loadPreferences());
     unawaited(_startLocalVideoServer());
   }
 
@@ -244,6 +246,30 @@ class PosState extends ChangeNotifier {
 
   int _selectedPaperWidth = 80; // 58 o 80 mm
   int get selectedPaperWidth => _selectedPaperWidth;
+
+  // Monitor para el display: 'auto', 'primary', 'right', 'left', 'top', 'bottom'
+  String _displayMonitor = 'auto';
+  String get displayMonitor => _displayMonitor;
+  void setDisplayMonitor(String monitor) {
+    _displayMonitor = monitor;
+    notifyListeners();
+  }
+
+  bool _displayLocal = false;
+  bool get displayLocal => _displayLocal;
+
+  Future<void> loadPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    _displayLocal = prefs.getBool('display_local') ?? false;
+    notifyListeners();
+  }
+
+  Future<void> setDisplayLocal(bool value) async {
+    _displayLocal = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('display_local', value);
+    notifyListeners();
+  }
 
   void setLanguage(String language) {
     _selectedLanguage = language;
@@ -488,7 +514,7 @@ class PosState extends ChangeNotifier {
     _currentBetAmount += amount;
     notifyListeners();
     if (_hasAnySelection && _currentBetAmount > 0) {
-      unawaited(addPlayToTicket()); // addPlayToTicket ya llama _ensureOddsLoaded internamente
+      addPlayToTicket();
     }
   }
 
@@ -598,9 +624,8 @@ class PosState extends ChangeNotifier {
   }
 
   // Jugada reversa: si hay 1° y 2° seleccionados, juega ambos sentidos (1/2 y 2/1)
-  Future<void> playReverse() async {
+  void playReverse() {
     if (_selectedDog1 == null || _selectedDog2 == null) return;
-    await _ensureOddsLoaded();
     final amount = _currentBetAmount > 0 ? _currentBetAmount : 25.0;
     _addCalculatedPlay(_selectedDog1!, _selectedDog2!, amount);
     _addCalculatedPlay(_selectedDog2!, _selectedDog1!, amount);
@@ -610,10 +635,9 @@ class PosState extends ChangeNotifier {
   }
 
   // Combina el perro seleccionado en 1° con todos los demás en 2°
-  Future<void> playAllCombinations() async {
+  void playAllCombinations() {
     final dog = _selectedDog1 ?? _selectedDog2;
     if (dog == null) return;
-    await _ensureOddsLoaded();
     final amount = _currentBetAmount > 0 ? _currentBetAmount : 25.0;
     for (int other = 1; other <= 6; other++) {
       if (other == dog) continue;
@@ -625,28 +649,26 @@ class PosState extends ChangeNotifier {
   }
 
   // Jugada R: combina el perro seleccionado con todos los demás en ambos sentidos ($25 c/u, total $350)
-  Future<void> playR() async {
+  void playR() {
     final dog = _selectedDog1 ?? _selectedDog2;
     if (dog == null) return;
-    await _ensureOddsLoaded();
     _playCombinedR(dog, 25.0);
   }
 
   // Jugada R/2: igual que R pero cada pale vale $12.5 (total $175)
-  Future<void> playR2() async {
+  void playR2() {
     final dog = _selectedDog1 ?? _selectedDog2;
     if (dog == null) return;
-    await _ensureOddsLoaded();
     _playCombinedR(dog, 12.5);
   }
 
-  Future<void> _playCombinedR(int dog, double amountPerPlay) async {
+  void _playCombinedR(int dog, double amountPerPlay) {
     for (int other = 1; other <= 6; other++) {
       if (other == dog) continue;
-      final o1 = await _fetchOddsForSelection('EXACTA', '$dog-$other');
-      final o2 = await _fetchOddsForSelection('EXACTA', '$other-$dog');
-      if (o1 != null && o1 > 1) _currentTicketPlays.add(Bet(dog1: dog, dog2: other, amount: amountPerPlay, odds: o1));
-      if (o2 != null && o2 > 1) _currentTicketPlays.add(Bet(dog1: other, dog2: dog, amount: amountPerPlay, odds: o2));
+      final o1 = _liveOdds['EXACTA:$dog-$other'] ?? 0.0;
+      final o2 = _liveOdds['EXACTA:$other-$dog'] ?? 0.0;
+      if (o1 > 1) _currentTicketPlays.add(Bet(dog1: dog, dog2: other, amount: amountPerPlay, odds: o1));
+      if (o2 > 1) _currentTicketPlays.add(Bet(dog1: other, dog2: dog, amount: amountPerPlay, odds: o2));
     }
     _resetSelection();
     notifyListeners();
@@ -666,7 +688,7 @@ class PosState extends ChangeNotifier {
     }
   }
 
-  Future<void> addPlayToTicket() async {
+  void addPlayToTicket() {
     if (_currentBetAmount <= 0) return;
     _oddsLoadError = null;
 
@@ -675,20 +697,20 @@ class PosState extends ChangeNotifier {
     final d3 = _selectedDog3;
 
     if (d1 != null && d2 != null && d3 != null) {
-      // TRIFECTA: consultar cuota exacta de la DB
-      final odds = await _fetchOddsForSelection('TRIFECTA', '$d1-$d2-$d3');
-      if (odds == null || odds <= 1) {
-        _oddsLoadError = 'No se pudo obtener la cuota de esta TRIPLETA. Verifica conexión e inténtalo de nuevo.';
+      // TRIFECTA: usar cuota del caché local (actualizado por polling)
+      final odds = _liveOdds['TRIFECTA:$d1-$d2-$d3'] ?? 0.0;
+      if (odds <= 1) {
+        _oddsLoadError = 'Cuota de TRIPLETA no disponible aún. Espera un momento e inténtalo de nuevo.';
         notifyListeners();
         return;
       }
       _currentTicketPlays.add(Bet(dog1: d1, dog2: d2, dog3: d3, amount: _currentBetAmount, odds: odds));
 
     } else if (d1 != null && d2 != null) {
-      // EXACTA: consultar cuota exacta de la DB
-      final odds = await _fetchOddsForSelection('EXACTA', '$d1-$d2');
-      if (odds == null || odds <= 1) {
-        _oddsLoadError = 'No se pudo obtener la cuota de este PALE. Verifica conexión e inténtalo de nuevo.';
+      // EXACTA: usar cuota del caché local (actualizado por polling)
+      final odds = _liveOdds['EXACTA:$d1-$d2'] ?? 0.0;
+      if (odds <= 1) {
+        _oddsLoadError = 'Cuota de PALE no disponible aún. Espera un momento e inténtalo de nuevo.';
         notifyListeners();
         return;
       }
