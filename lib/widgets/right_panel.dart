@@ -1,9 +1,7 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
-import 'package:screen_retriever/screen_retriever.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:pos/services/api_client.dart';
 import 'package:pos/state/pos_state.dart';
 
 class RightPanel extends StatefulWidget {
@@ -20,51 +18,19 @@ class _RightPanelState extends State<RightPanel> {
   bool _isCogHovered = false;
   bool _isDisplayHovered = false;
   Process? _displayProcess; // rastrear proceso del display para traer al frente
+  bool _displayInstalled = false;
 
-  /// Usa PowerShell + System.Windows.Forms.Screen para obtener
-  /// las coordenadas exactas de cada monitor según Windows.
-  Future<({int x, int y, int w, int h})?> _detectSecondaryMonitor() async {
-    try {
-      final result = await Process.run('powershell', [
-        '-NoProfile',
-        '-NonInteractive',
-        '-Command',
-        r'Add-Type -AssemblyName System.Windows.Forms; '
-            r'[System.Windows.Forms.Screen]::AllScreens | '
-            r'ForEach-Object { "$($_.Primary)|$($_.Bounds.X)|$($_.Bounds.Y)|$($_.Bounds.Width)|$($_.Bounds.Height)" }',
-      ]);
-      if (result.exitCode != 0) return null;
-      for (final raw in (result.stdout as String).split('\n')) {
-        final line = raw.trim();
-        if (line.isEmpty) continue;
-        final parts = line.split('|');
-        if (parts.length < 5) continue;
-        final isPrimary = parts[0].trim().toLowerCase() == 'true';
-        if (isPrimary) continue; // saltamos el monitor principal
-        final x = int.tryParse(parts[1].trim());
-        final y = int.tryParse(parts[2].trim());
-        final w = int.tryParse(parts[3].trim());
-        final h = int.tryParse(parts[4].trim());
-        if (x != null && y != null && w != null && h != null) {
-          return (x: x, y: y, w: w, h: h);
-        }
-      }
-    } catch (_) {}
-    return null;
+  static const _displayExePath = r'C:\ProgramData\MBSport\display\display_mbsport.exe';
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_checkDisplayInstalled());
   }
 
-  /// Busca Chrome o Edge en el sistema
-  Future<String?> _findBrowser() async {
-    final candidates = [
-      r'C:\Program Files\Google\Chrome\Application\chrome.exe',
-      r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe',
-      r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe',
-      r'C:\Program Files\Microsoft\Edge\Application\msedge.exe',
-    ];
-    for (final path in candidates) {
-      if (await File(path).exists()) return path;
-    }
-    return null;
+  Future<void> _checkDisplayInstalled() async {
+    final exists = await File(_displayExePath).exists();
+    if (mounted) setState(() => _displayInstalled = exists);
   }
 
   /// Trae la ventana del display al frente si ya está abierta (PowerShell)
@@ -72,7 +38,7 @@ class _RightPanelState extends State<RightPanel> {
     try {
       final result = await Process.run('powershell', [
         '-NoProfile', '-NonInteractive', '-Command',
-        r'$w = Get-Process chrome,msedge -ErrorAction SilentlyContinue | Where-Object {$_.MainWindowHandle -ne 0} | Select-Object -First 1; if ($w) { Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.Interaction]::AppActivate($w.Id); $true } else { $false }',
+        r'$w = Get-Process display_mbsport -ErrorAction SilentlyContinue | Where-Object {$_.MainWindowHandle -ne 0} | Select-Object -First 1; if ($w) { Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.Interaction]::AppActivate($w.Id); $true } else { $false }',
       ]);
       return (result.stdout as String).trim().toLowerCase() == 'true';
     } catch (_) {
@@ -88,139 +54,34 @@ class _RightPanelState extends State<RightPanel> {
       _displayProcess = null; // proceso ya terminó, abrir de nuevo
     }
 
+    if (!await File(_displayExePath).exists()) {
+      if (mounted) setState(() => _displayInstalled = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('El display MBSport no está instalado en este equipo.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+      return;
+    }
+    if (mounted) setState(() => _displayInstalled = true);
+
     final agencyId = widget.state.agencyId;
-    final monitorConfig = widget.state.displayMonitor;
-    final isLocal = widget.state.displayLocal;
-
-    // URL según modo local o remoto
-    final displayUrl = isLocal
-        ? 'file:///C:/ProgramData/MBSport/display/index.html?agencyId=$agencyId'
-        : 'https://display.mbsport.lat/?agencyId=$agencyId';
-
-    // Calcular posición del monitor secundario
-    String? positionArg;
-    String? sizeArg;
-
-    if (monitorConfig == 'auto') {
-      final secondary = await _detectSecondaryMonitor();
-      if (secondary != null) {
-        positionArg = '--window-position=${secondary.x},${secondary.y}';
-        sizeArg = '--window-size=${secondary.w},${secondary.h}';
-      }
-    } else if (monitorConfig == 'right') {
-      positionArg = '--window-position=1920,0';
-    } else if (monitorConfig == 'left') {
-      positionArg = '--window-position=-1920,0';
-    } else if (monitorConfig == 'top') {
-      positionArg = '--window-position=0,-1080';
-    } else if (monitorConfig == 'bottom') {
-      positionArg = '--window-position=0,1080';
-    }
-
-    // Desactivar taskbar en monitores secundarios
-    try {
-      await Process.run('powershell', [
-        '-NoProfile', '-NonInteractive', '-Command',
-        r'''
-$p = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-Set-ItemProperty -Path $p -Name MMTaskbarEnabled -Value 0 -Force
-Add-Type -TypeDefinition @"
-using System;using System.Runtime.InteropServices;
-public class Shell32{
-  [DllImport("user32.dll")]
-  public static extern IntPtr SendMessageTimeout(IntPtr h,uint m,UIntPtr w,string l,uint f,uint t,out UIntPtr r);
-  public static void Notify(){UIntPtr r;SendMessageTimeout(new IntPtr(0xffff),0x001A,UIntPtr.Zero,"TraySettings",2,1000,out r);}
-}
-"@
-[Shell32]::Notify()
-        ''',
-      ]);
-    } catch (_) {}
-
-    final browserPath = await _findBrowser();
-    if (browserPath != null) {
-      final tempDir = Platform.environment['TEMP'] ?? 'C:\\Temp';
-      final userDataDir = '$tempDir\\MBSportDisplayProfile';
-
-      final args = [
-        '--kiosk',
-        displayUrl,
-        '--start-fullscreen',
-        '--user-data-dir=$userDataDir',
-        '--no-first-run',
-        '--disable-infobars',
-        '--disable-extensions',
-        '--allow-running-insecure-content',
-        if (positionArg != null) positionArg,
-        if (sizeArg != null) sizeArg,
-      ];
-      _displayProcess = await Process.start(
-        browserPath, args,
-        mode: ProcessStartMode.detached,
-      );
-    } else {
-      final uri = Uri.parse(displayUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
-    }
-  }
-
-  static const _localVideosPath = r'C:\ProgramData\MBSport\videos';
-
-  Future<int?> _countLocalVideos() async {
-    try {
-      final dir = Directory(_localVideosPath);
-      if (!await dir.exists()) return null;
-      final files = await dir
-          .list()
-          .where((e) => e is File && e.path.toLowerCase().endsWith('.mp4'))
-          .length;
-      return files;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Future<({int synced, int missing})?> _compareWithServer() async {
-    try {
-      final api = ApiClient();
-      api.setToken(widget.state.authToken);
-      final serverVideos = await api.getVideos();
-      final dir = Directory(_localVideosPath);
-      if (!await dir.exists()) return null;
-
-      final localNames = <String>{};
-      await for (final e in dir.list()) {
-        if (e is File && e.path.toLowerCase().endsWith('.mp4')) {
-          localNames.add(e.uri.pathSegments.last.replaceAll('.mp4', '').toLowerCase());
-        }
-      }
-
-      int synced = 0, missing = 0;
-      for (final v in serverVideos) {
-        final nombre = (v['nombre'] as String? ?? '').toLowerCase();
-        if (localNames.contains(nombre)) {
-          synced++;
-        } else {
-          missing++;
-        }
-      }
-      return (synced: synced, missing: missing);
-    } catch (_) {
-      return null;
-    }
+    _displayProcess = await Process.start(
+      _displayExePath,
+      ['--agencyId=$agencyId'],
+      mode: ProcessStartMode.detached,
+    );
   }
 
   Future<void> _openSettingsDialog() async {
+    await _checkDisplayInstalled();
     String selectedLanguage = widget.state.selectedLanguage;
     String selectedPrinter = widget.state.selectedPrinter;
     int selectedPaperWidth = widget.state.selectedPaperWidth;
-    String selectedMonitor = widget.state.displayMonitor;
-    bool selectedDisplayLocal = widget.state.displayLocal;
-    int? localVideoCount;
-    String? localScanMsg;
-    String? compareMsg;
+    bool displayInstalled = _displayInstalled;
 
     const languages = ['Español', 'English'];
 
@@ -367,92 +228,10 @@ public class Shell32{
                     }).toList(),
                   ),
                   const SizedBox(height: 20),
-                  const Text(
-                    'Monitor del Display',
-                    style: TextStyle(
-                      fontFamily: 'DinNextLtPro',
-                      color: Colors.white70,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  DropdownButton<String>(
-                    value: selectedMonitor,
-                    isExpanded: true,
-                    dropdownColor: const Color(0xFF1B1B1B),
-                    style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 13),
-                    items: const [
-                      DropdownMenuItem(value: 'auto',    child: Text('Automático (detectar monitor 2)')),
-                      DropdownMenuItem(value: 'right',   child: Text('Monitor a la DERECHA (x=1920)')),
-                      DropdownMenuItem(value: 'left',    child: Text('Monitor a la IZQUIERDA (x=-1920)')),
-                      DropdownMenuItem(value: 'top',     child: Text('Monitor ARRIBA (y=-1080)')),
-                      DropdownMenuItem(value: 'bottom',  child: Text('Monitor ABAJO (y=1080)')),
-                      DropdownMenuItem(value: 'primary', child: Text('Monitor principal (mismo que POS)')),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) setDialogState(() => selectedMonitor = value);
-                    },
-                  ),
-                  const SizedBox(height: 20),
                   const Divider(color: Colors.white24),
                   const SizedBox(height: 8),
 
-                  // ── Modo Local ──────────────────────────────────────────
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Modo Local',
-                              style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white70, fontSize: 14)),
-                            Text('Display desde archivo local en este PC',
-                              style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white38, fontSize: 11)),
-                          ],
-                        ),
-                      ),
-                      Switch(
-                        value: selectedDisplayLocal,
-                        activeColor: const Color(0xFFD4AF37),
-                        onChanged: (val) async {
-                          setDialogState(() {
-                            selectedDisplayLocal = val;
-                            localScanMsg = null;
-                            compareMsg = null;
-                          });
-                          if (val) {
-                            final count = await _countLocalVideos();
-                            setDialogState(() {
-                              if (count == null) {
-                                localScanMsg = 'Ruta no encontrada: $_localVideosPath';
-                              } else {
-                                localScanMsg = '$count videos .mp4 encontrados';
-                                localVideoCount = count;
-                              }
-                            });
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                  if (localScanMsg != null) ...[
-                    const SizedBox(height: 4),
-                    Text(localScanMsg!,
-                      style: TextStyle(
-                        fontFamily: 'DinNextLtPro',
-                        color: localVideoCount != null ? Colors.greenAccent : Colors.redAccent,
-                        fontSize: 12,
-                      )),
-                  ],
-                  if (compareMsg != null) ...[
-                    const SizedBox(height: 4),
-                    Text(compareMsg!,
-                      style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white70, fontSize: 12)),
-                  ],
-                  const SizedBox(height: 12),
-                  const Divider(color: Colors.white24),
-                  const SizedBox(height: 8),
-                  // Sincronizar videos locales (servidor local antiguo)
+                  // ── Display MBSport ──────────────────────────────────────
                   Row(
                     children: [
                       Expanded(
@@ -460,7 +239,7 @@ public class Shell32{
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'Videos locales',
+                              'Display MBSport',
                               style: TextStyle(
                                 fontFamily: 'DinNextLtPro',
                                 color: Colors.white70,
@@ -468,14 +247,10 @@ public class Shell32{
                               ),
                             ),
                             Text(
-                              widget.state.localServerRunning
-                                  ? 'Servidor activo en puerto 8765'
-                                  : 'Servidor inactivo',
+                              displayInstalled ? 'Detectado ✓' : 'No encontrado',
                               style: TextStyle(
                                 fontFamily: 'DinNextLtPro',
-                                color: widget.state.localServerRunning
-                                    ? Colors.greenAccent
-                                    : Colors.white38,
+                                color: displayInstalled ? Colors.greenAccent : Colors.redAccent,
                                 fontSize: 11,
                               ),
                             ),
@@ -483,12 +258,10 @@ public class Shell32{
                         ),
                       ),
                       TextButton(
-                        onPressed: widget.state.isSyncing
-                            ? null
-                            : () {
-                                Navigator.of(context).pop();
-                                _startSync();
-                              },
+                        onPressed: () async {
+                          await _checkDisplayInstalled();
+                          setDialogState(() => displayInstalled = _displayInstalled);
+                        },
                         style: TextButton.styleFrom(
                           backgroundColor: const Color(0xFF2A2A2A),
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -498,7 +271,7 @@ public class Shell32{
                           ),
                         ),
                         child: const Text(
-                          'SINCRONIZAR',
+                          'VERIFICAR',
                           style: TextStyle(
                             fontFamily: 'DinNextLtPro',
                             color: Color(0xFFD4AF37),
@@ -544,25 +317,11 @@ public class Shell32{
                   ),
                 ),
                 TextButton(
-                  onPressed: () async {
+                  onPressed: () {
                     widget.state.setLanguage(selectedLanguage);
                     widget.state.setPrinter(selectedPrinter);
                     widget.state.setPaperWidth(selectedPaperWidth);
-                    widget.state.setDisplayMonitor(selectedMonitor);
-                    await widget.state.setDisplayLocal(selectedDisplayLocal);
-                    // Si modo local activo → comparar con servidor
-                    if (selectedDisplayLocal) {
-                      setDialogState(() => compareMsg = 'Comparando con servidor...');
-                      final result = await _compareWithServer();
-                      if (result != null) {
-                        setDialogState(() => compareMsg =
-                          '${result.synced} videos sincronizados · ${result.missing} faltantes en local');
-                      } else {
-                        setDialogState(() => compareMsg = 'No se pudo comparar con el servidor');
-                      }
-                    } else {
-                      Navigator.of(context).pop();
-                    }
+                    Navigator.of(context).pop();
                   },
                   child: const Text(
                     'GUARDAR',
@@ -579,92 +338,6 @@ public class Shell32{
         );
       },
     );
-  }
-
-  void _startSync() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => ListenableBuilder(
-        listenable: widget.state,
-        builder: (context, _) {
-          final done = widget.state.syncDone;
-          final total = widget.state.syncTotal;
-          final current = widget.state.syncCurrent;
-          final syncing = widget.state.isSyncing;
-          final progress = total > 0 ? done / total : 0.0;
-
-          return AlertDialog(
-            backgroundColor: const Color(0xFF1B1B1B),
-            title: Text(
-              syncing ? 'Sincronizando videos...' : 'Sincronización completa',
-              style: const TextStyle(
-                fontFamily: 'DinNextLtPro',
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                LinearProgressIndicator(
-                  value: syncing && total == 0 ? null : progress,
-                  backgroundColor: const Color(0xFF2A2A2A),
-                  color: const Color(0xFFD4AF37),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  total > 0 ? '$done / $total videos' : 'Obteniendo lista...',
-                  style: const TextStyle(
-                    fontFamily: 'DinNextLtPro',
-                    color: Colors.white70,
-                    fontSize: 13,
-                  ),
-                ),
-                if (current.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    current,
-                    style: const TextStyle(
-                      fontFamily: 'DinNextLtPro',
-                      color: Colors.white38,
-                      fontSize: 11,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ],
-            ),
-            actions: syncing
-                ? null
-                : [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text(
-                        'CERRAR',
-                        style: TextStyle(
-                          fontFamily: 'DinNextLtPro',
-                          color: Color(0xFFD4AF37),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-          );
-        },
-      ),
-    );
-
-    // Iniciar la sincronización
-    widget.state.syncVideos().catchError((e) {
-      if (mounted) {
-        Navigator.of(context).popUntil((r) => r.isFirst);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
-        );
-      }
-    });
   }
 
   void _confirmLogout() {
@@ -817,6 +490,15 @@ public class Shell32{
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1.2,
                         color: _isDisplayHovered ? Colors.black : const Color(0xFFD4AF37),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _displayInstalled ? Colors.greenAccent : Colors.redAccent,
                       ),
                     ),
                   ],

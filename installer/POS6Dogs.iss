@@ -39,7 +39,6 @@ Source: "{#ReleaseDir}\screen_retriever_plugin.dll";  DestDir: "{app}"; Flags: i
 Source: "{#ReleaseDir}\window_manager_plugin.dll";    DestDir: "{app}"; Flags: ignoreversion
 Source: "{#ReleaseDir}\printing_plugin.dll";              DestDir: "{app}"; Flags: ignoreversion
 Source: "{#ReleaseDir}\pdfium.dll";                      DestDir: "{app}"; Flags: ignoreversion
-Source: "{#ReleaseDir}\url_launcher_windows_plugin.dll"; DestDir: "{app}"; Flags: ignoreversion
 
 ; Carpeta data completa (assets, fuentes, shaders, etc.)
 Source: "{#ReleaseDir}\data\*"; DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs createallsubdirs

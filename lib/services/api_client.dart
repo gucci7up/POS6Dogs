@@ -104,27 +104,6 @@ class ApiClient {
     return auth;
   }
 
-  /// Devuelve {key, iv} en base64 para encriptación local de videos,
-  /// o null si el servidor no tiene configurada la clave.
-  Future<Map<String, String>?> getVideoEncryptionKey(String token) async {
-    try {
-      final uri = Uri.parse('$baseUrl/videos/encryption-key');
-      final response = await http.get(uri, headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      });
-      if (response.statusCode != 200) return null;
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      if (data['localEnabled'] != true) return null;
-      return {
-        'key': data['key'] as String,
-        'iv':  data['iv']  as String,
-      };
-    } catch (_) {
-      return null;
-    }
-  }
-
   Future<Map<String, dynamic>> getRaceEngineStatus() async {
     return await _request('GET', '/race-engine/status') as Map<String, dynamic>;
   }
@@ -183,7 +162,4 @@ class ApiClient {
     return await _request('GET', '/tickets/race/$raceId') as List<dynamic>;
   }
 
-  Future<List<dynamic>> getVideos() async {
-    return await _request('GET', '/videos?activo=true') as List<dynamic>;
-  }
 }

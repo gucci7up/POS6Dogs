@@ -1,11 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pos/services/api_client.dart';
-import 'package:pos/services/local_video_server.dart';
-import 'package:pos/services/video_sync_service.dart';
 
 class PrintResult {
   final String? error;
@@ -109,75 +104,6 @@ class PosState extends ChangeNotifier {
     unawaited(_refreshSalesHistory());
     unawaited(_refreshResultsHistory());
     unawaited(_refreshOddsHistory());
-    unawaited(loadPreferences());
-    unawaited(_startLocalVideoServer());
-  }
-
-  // ── Servidor local de videos ──────────────────────────────────────────────
-
-  String? _videosDir;
-  String? get videosDir => _videosDir;
-
-  bool _localServerRunning = false;
-  bool get localServerRunning => _localServerRunning;
-
-  // Estado de sincronización
-  bool _syncing = false;
-  bool get isSyncing => _syncing;
-
-  int _syncDone = 0;
-  int _syncTotal = 0;
-  String _syncCurrent = '';
-
-  int get syncDone => _syncDone;
-  int get syncTotal => _syncTotal;
-  String get syncCurrent => _syncCurrent;
-
-  Future<void> _startLocalVideoServer() async {
-    try {
-      final appDir = await getApplicationSupportDirectory();
-      _videosDir = p.join(appDir.path, 'videos');
-
-      // Obtener clave AES del servidor (requiere JWT válido)
-      final keyData = await _api.getVideoEncryptionKey(_auth.accessToken);
-      if (keyData != null) {
-        LocalVideoServer.setKey(keyData['key']!, keyData['iv']!);
-      }
-
-      await LocalVideoServer.start(_videosDir!);
-      _localServerRunning = LocalVideoServer.hasKey;
-      notifyListeners();
-    } catch (_) {
-      _localServerRunning = false;
-    }
-  }
-
-  Future<SyncResult> syncVideos() async {
-    if (_syncing || _videosDir == null) {
-      throw Exception('Sincronización ya en curso o servidor no iniciado');
-    }
-    _syncing = true;
-    _syncDone = 0;
-    _syncTotal = 0;
-    _syncCurrent = '';
-    notifyListeners();
-
-    try {
-      final result = await VideoSyncService.sync(
-        accessToken: _auth.accessToken,
-        videosDir: _videosDir!,
-        onProgress: (done, total, current) {
-          _syncDone = done;
-          _syncTotal = total;
-          _syncCurrent = current;
-          notifyListeners();
-        },
-      );
-      return result;
-    } finally {
-      _syncing = false;
-      notifyListeners();
-    }
   }
 
   int _currentRace = 0;
@@ -246,30 +172,6 @@ class PosState extends ChangeNotifier {
 
   int _selectedPaperWidth = 80; // 58 o 80 mm
   int get selectedPaperWidth => _selectedPaperWidth;
-
-  // Monitor para el display: 'auto', 'primary', 'right', 'left', 'top', 'bottom'
-  String _displayMonitor = 'auto';
-  String get displayMonitor => _displayMonitor;
-  void setDisplayMonitor(String monitor) {
-    _displayMonitor = monitor;
-    notifyListeners();
-  }
-
-  bool _displayLocal = false;
-  bool get displayLocal => _displayLocal;
-
-  Future<void> loadPreferences() async {
-    final prefs = await SharedPreferences.getInstance();
-    _displayLocal = prefs.getBool('display_local') ?? false;
-    notifyListeners();
-  }
-
-  Future<void> setDisplayLocal(bool value) async {
-    _displayLocal = value;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('display_local', value);
-    notifyListeners();
-  }
 
   void setLanguage(String language) {
     _selectedLanguage = language;

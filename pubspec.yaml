@@ -39,13 +39,6 @@ dependencies:
   pdf: ^3.11.1
   printing: ^5.13.2
   qr_flutter: ^4.1.0
-  url_launcher: ^6.3.2
-  screen_retriever: ^0.1.9
-  shelf: ^1.4.2
-  path_provider: ^2.1.4
-  encrypt: ^5.0.3
-  path: ^1.9.0
-  shared_preferences: ^2.3.0
 
 dev_dependencies:
   flutter_test:
