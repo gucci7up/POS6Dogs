@@ -12,6 +12,7 @@ import 'package:pos/screens/ventas_screen.dart';
 import 'package:pos/screens/tickets_screen.dart';
 import 'package:pos/screens/premios_screen.dart';
 import 'package:pos/services/api_client.dart';
+import 'package:pos/services/session_store.dart';
 import 'package:pos/state/pos_state.dart';
 
 void main() async {
@@ -71,9 +72,37 @@ class _RootScreenState extends State<RootScreen> {
   final ApiClient _apiClient = ApiClient();
   AuthResult? _auth;
   bool _sessionLocked = false;
+  bool _restoring = true; // reanudando sesión guardada al abrir la app
   Timer? _inactivityTimer;
 
   static const _inactivityTimeout = Duration(hours: 8);
+
+  @override
+  void initState() {
+    super.initState();
+    _restoreSession();
+  }
+
+  // Reanuda la sesión guardada (si existe) iniciando sesión automáticamente.
+  Future<void> _restoreSession() async {
+    final creds = await SessionStore.read();
+    if (creds != null) {
+      try {
+        final auth = await _apiClient.login(creds.username, creds.password);
+        if (mounted) {
+          setState(() {
+            _auth = auth;
+            _sessionLocked = false;
+          });
+          _resetInactivityTimer();
+        }
+      } catch (_) {
+        // Credenciales inválidas u offline: se muestra el login normal.
+        // No se borran las credenciales para reintentar en el próximo arranque.
+      }
+    }
+    if (mounted) setState(() => _restoring = false);
+  }
 
   @override
   void dispose() {
@@ -97,6 +126,8 @@ class _RootScreenState extends State<RootScreen> {
   Future<String?> _handleLogin(String username, String password) async {
     try {
       final auth = await _apiClient.login(username, password);
+      // Guardar credenciales para reanudar la sesión en próximos arranques.
+      await SessionStore.save(username, password);
       setState(() {
         _auth = auth;
         _sessionLocked = false;
@@ -120,6 +151,8 @@ class _RootScreenState extends State<RootScreen> {
   void _handleLogout() {
     _inactivityTimer?.cancel();
     _apiClient.setToken(null);
+    // Al cerrar sesión explícitamente se olvidan las credenciales guardadas.
+    unawaited(SessionStore.clear());
     setState(() {
       _auth = null;
       _sessionLocked = false;
@@ -128,6 +161,16 @@ class _RootScreenState extends State<RootScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Reanudando sesión guardada: splash mientras se resuelve el auto-login.
+    if (_restoring) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFFD4AF37)),
+        ),
+      );
+    }
+
     final auth = _auth;
 
     // Sin sesión activa: pantalla de login pura

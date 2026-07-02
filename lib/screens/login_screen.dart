@@ -21,7 +21,11 @@ class LoginScreen extends StatefulWidget {
 
 enum _ActiveField { account, password }
 
-const int _accountDigits = 12;
+// El número de acceso puede tener entre 8 y 12 dígitos (cuentas nuevas de 8,
+// cuentas antiguas de hasta 12). El formato con guiones debe coincidir con el
+// que genera el admin al crear el usuario.
+const int _accountMinDigits = 8;
+const int _accountMaxDigits = 12;
 
 class _LoginScreenState extends State<LoginScreen> {
   String _account = '';
@@ -33,7 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void _typeDigit(String digit) {
     setState(() {
       if (_active == _ActiveField.account) {
-        if (_account.length < _accountDigits) {
+        if (_account.length < _accountMaxDigits) {
           _account += digit;
         }
       } else {
@@ -75,9 +79,9 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     // Modo login normal
-    if (_account.length != _accountDigits || _password.isEmpty) {
+    if (_account.length < _accountMinDigits || _password.isEmpty) {
       setState(() {
-        _error = 'Complete el número de acceso (12 dígitos) y el PIN.';
+        _error = 'Complete el número de acceso (8 a 12 dígitos) y el PIN.';
       });
       return;
     }

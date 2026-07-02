@@ -39,6 +39,8 @@ dependencies:
   pdf: ^3.11.1
   printing: ^5.13.2
   qr_flutter: ^4.1.0
+  shared_preferences: ^2.3.0
+  encrypt: ^5.0.3
 
 dev_dependencies:
   flutter_test:
