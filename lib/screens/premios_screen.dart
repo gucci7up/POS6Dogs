@@ -520,7 +520,7 @@ class _NumKeyState extends State<_NumKey> {
 class _TableHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    const style = TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 22, fontWeight: FontWeight.bold);
+    const style = TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 25, fontWeight: FontWeight.bold);
     return Container(
       decoration: const BoxDecoration(
         color: Color(0xFF7E7E7E),
@@ -570,13 +570,13 @@ class _TicketRow extends StatelessWidget {
       ),
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 24),
       child: Row(children: [
-        Expanded(flex: 1, child: Text('$number', style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold))),
-        Expanded(flex: 2, child: Text(dateStr, style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white70, fontSize: 20))),
-        Expanded(flex: 3, child: Text(playsStr, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 20))),
-        Expanded(flex: 1, child: Text('$raceNum', style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white70, fontSize: 20))),
-        Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text('\$${total.toStringAsFixed(2)}', style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 20)))),
+        Expanded(flex: 1, child: Text('$number', style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 23, fontWeight: FontWeight.bold))),
+        Expanded(flex: 2, child: Text(dateStr, style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white70, fontSize: 23))),
+        Expanded(flex: 3, child: Text(playsStr, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 23))),
+        Expanded(flex: 1, child: Text('$raceNum', style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white70, fontSize: 23))),
+        Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text('\$${total.toStringAsFixed(2)}', style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 23)))),
         Expanded(flex: 1, child: Align(alignment: Alignment.centerRight,
-          child: Text('\$${prize.toStringAsFixed(2)}', style: const TextStyle(fontFamily: 'DinNextLtPro', color: Color(0xFF4CAF50), fontSize: 20, fontWeight: FontWeight.bold)))),
+          child: Text('\$${prize.toStringAsFixed(2)}', style: const TextStyle(fontFamily: 'DinNextLtPro', color: Color(0xFF4CAF50), fontSize: 23, fontWeight: FontWeight.bold)))),
         Expanded(flex: 1, child: Center(
           child: SizedBox(
             height: 40,

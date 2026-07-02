@@ -171,11 +171,11 @@ class _TicketsScreenState extends State<TicketsScreen> {
             ),
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 24),
             child: const Row(children: [
-              Expanded(flex: 1, child: Text('Nu.', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold))),
-              Expanded(flex: 4, child: Text('Jugadas', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold))),
-              Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text('Monto', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold)))),
-              Expanded(flex: 1, child: Center(child: Text('Estado', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold)))),
-              Expanded(flex: 1, child: Center(child: Text('Acción', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold)))),
+              Expanded(flex: 1, child: Text('Nu.', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 22, fontWeight: FontWeight.bold))),
+              Expanded(flex: 4, child: Text('Jugadas', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 22, fontWeight: FontWeight.bold))),
+              Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text('Monto', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 22, fontWeight: FontWeight.bold)))),
+              Expanded(flex: 1, child: Center(child: Text('Estado', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 22, fontWeight: FontWeight.bold)))),
+              Expanded(flex: 1, child: Center(child: Text('Acción', style: TextStyle(fontFamily: 'DinNextLtPro', color: Colors.black, fontSize: 22, fontWeight: FontWeight.bold)))),
             ]),
           ),
 
@@ -211,18 +211,18 @@ class _TicketsScreenState extends State<TicketsScreen> {
                                   padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 24),
                                   child: Row(children: [
                                     Expanded(flex: 1, child: Text('#${t['ticketNumber']}',
-                                      style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 19, fontWeight: FontWeight.bold))),
+                                      style: const TextStyle(fontFamily: 'DinNextLtPro', color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold))),
                                     Expanded(flex: 4, child: Text(_formatPlays(details),
-                                      style: TextStyle(fontFamily: 'DinNextLtPro', color: status == 'CANCELLED' ? Colors.white38 : Colors.white, fontSize: 18),
+                                      style: TextStyle(fontFamily: 'DinNextLtPro', color: status == 'CANCELLED' ? Colors.white38 : Colors.white, fontSize: 21),
                                       maxLines: 1, overflow: TextOverflow.ellipsis)),
                                     Expanded(flex: 1, child: Align(alignment: Alignment.centerRight,
                                       child: Text('\$${amount.toStringAsFixed(2)}',
-                                        style: TextStyle(fontFamily: 'DinNextLtPro', color: status == 'CANCELLED' ? Colors.white38 : Colors.white, fontSize: 19, fontWeight: FontWeight.bold)))),
+                                        style: TextStyle(fontFamily: 'DinNextLtPro', color: status == 'CANCELLED' ? Colors.white38 : Colors.white, fontSize: 22, fontWeight: FontWeight.bold)))),
                                     Expanded(flex: 1, child: Center(
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                         decoration: BoxDecoration(color: _statusColor(status).withOpacity(0.15), borderRadius: BorderRadius.circular(12), border: Border.all(color: _statusColor(status).withOpacity(0.5))),
-                                        child: Text(_statusLabel(status), style: TextStyle(fontFamily: 'DinNextLtPro', color: _statusColor(status), fontSize: 14, fontWeight: FontWeight.bold)),
+                                        child: Text(_statusLabel(status), style: TextStyle(fontFamily: 'DinNextLtPro', color: _statusColor(status), fontSize: 17, fontWeight: FontWeight.bold)),
                                       ),
                                     )),
                                     Expanded(flex: 1, child: Center(
