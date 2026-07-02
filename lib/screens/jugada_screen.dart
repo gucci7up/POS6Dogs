@@ -143,50 +143,107 @@ class _JugadaScreenState extends State<JugadaScreen> {
       child: GestureDetector(
         onTap: () => _openRepeatNumpad(state),
         child: Container(
-          width: 145,
-          height: 145,
-          padding: const EdgeInsets.all(10),
+          width: 170,
+          height: 56,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
             color: const Color(0xFF1B1B1B),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFD4AF37), width: 2),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFD4AF37), width: 1.5),
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Row(
             children: [
-              const Text(
-                'REPETIR\nTICKET',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'DinNextLtPro',
-                  color: Color(0xFFD4AF37),
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  height: 1.1,
+              const Icon(Icons.dialpad, color: Color(0xFFD4AF37), size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'REPETIR TICKET',
+                      style: TextStyle(
+                        fontFamily: 'DinNextLtPro',
+                        color: Color(0xFFD4AF37),
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black26,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        hasNumber ? _repeatInput : 'N° / ID',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: 'DinNextLtPro',
+                          color: hasNumber ? Colors.white : Colors.white38,
+                          fontSize: hasNumber ? 13 : 10,
+                          fontWeight: hasNumber ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 8),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.black26,
-                  borderRadius: BorderRadius.circular(6),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Botón para confirmar la jugada en curso (selección + monto) y sumarla al ticket
+  Widget _buildAddPlayButton(PosState state) {
+    final ready = state.isSalesOpen && state.hasPendingPlay;
+    return Semantics(
+      label: 'Agregar jugada al ticket',
+      button: true,
+      child: MouseRegion(
+        cursor: ready ? SystemMouseCursors.click : SystemMouseCursors.basic,
+        child: GestureDetector(
+          onTap: ready ? state.addPlayToTicket : null,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: 145,
+            height: 145,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: ready ? const Color(0xFFD4AF37) : const Color(0xFF1B1B1B),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: ready ? const Color(0xFFD4AF37) : Colors.white24,
+                width: 2,
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.add_circle_outline,
+                  color: ready ? Colors.black : Colors.white38,
+                  size: 42,
                 ),
-                child: Text(
-                  hasNumber ? _repeatInput : 'N° / ID',
+                const SizedBox(height: 8),
+                Text(
+                  'AGREGAR\nJUGADA',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: 'DinNextLtPro',
-                    color: hasNumber ? Colors.white : Colors.white38,
-                    fontSize: hasNumber ? 16 : 12,
-                    fontWeight: hasNumber ? FontWeight.bold : FontWeight.normal,
+                    color: ready ? Colors.black : Colors.white38,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    height: 1.1,
                   ),
                 ),
-              ),
-              const SizedBox(height: 6),
-              const Icon(Icons.dialpad, color: Color(0xFFD4AF37), size: 22),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -225,7 +282,7 @@ class _JugadaScreenState extends State<JugadaScreen> {
       children: [
         // Main Board Content
         Container(
-          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          padding: const EdgeInsets.only(top: 16.0, bottom: 28.0),
           child: Column(
             children: [
               const Spacer(flex: 1),
@@ -263,8 +320,8 @@ class _JugadaScreenState extends State<JugadaScreen> {
                                 children: List.generate(6, (index) {
                                   final dogNum = index + 1;
                                   final info = _dogInfo[dogNum]!;
-                                  final isSelected = state.selectedDog1 == dogNum;
-                                  final isDimmed = state.selectedDog1 != null;
+                                  final isSelected = state.selectedDogs1.contains(dogNum);
+                                  final isDimmed = state.selectedDogs1.isNotEmpty;
                                   return DogOddsCard(
                                     number: dogNum,
                                     name: info['name']!,
@@ -515,6 +572,16 @@ class _JugadaScreenState extends State<JugadaScreen> {
                                                 ),
                                               ),
                                             )
+                                          else if (state.selectedDogs1.length > 1)
+                                            Text(
+                                              'SELECCIÓN: ${(state.selectedDogs1.toList()..sort()).join(", ")}',
+                                              style: const TextStyle(
+                                                fontFamily: 'DinNextLtPro',
+                                                color: Colors.white,
+                                                fontSize: 22,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            )
                                           else if (state.selectedDog1 != null && state.selectedDog2 != null)
                                             Text(
                                               'JUGADA: ${state.selectedDog1} - ${state.selectedDog2}'
@@ -598,7 +665,7 @@ class _JugadaScreenState extends State<JugadaScreen> {
                           onTap: state.isSalesOpen ? () => state.addBetAmount(200) : () {},
                         ),
                         const SizedBox(width: 20),
-                        _buildRepeatTicketBox(state),
+                        _buildAddPlayButton(state),
                       ],
                     ),
                   ),
@@ -688,6 +755,13 @@ class _JugadaScreenState extends State<JugadaScreen> {
               ),
             ],
           ),
+        ),
+
+        // Repetir ticket — flotante encima del botón de imprimir
+        Positioned(
+          right: 24,
+          bottom: 244,
+          child: _buildRepeatTicketBox(state),
         ),
 
         // Sliding Ticket Drawer (State 2 - OPEN)

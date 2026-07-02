@@ -188,8 +188,13 @@ class PosState extends ChangeNotifier {
     notifyListeners();
   }
 
-  int? _selectedDog1;
-  int? get selectedDog1 => _selectedDog1;
+  // Fila 1°: permite seleccionar varios perros a la vez (para reverse múltiple
+  // y jugadas GANAR en lote). Los flujos EXACTA/TRIFECTA aplican solo cuando
+  // hay exactamente un perro seleccionado.
+  final Set<int> _selectedDogs1 = {};
+  Set<int> get selectedDogs1 => _selectedDogs1;
+  int? get _soloDog1 => _selectedDogs1.length == 1 ? _selectedDogs1.first : null;
+  int? get selectedDog1 => _soloDog1;
 
   int? _selectedDog2;
   int? get selectedDog2 => _selectedDog2;
@@ -259,24 +264,37 @@ class PosState extends ChangeNotifier {
       _isServerOnline = true;
 
       final currentRaceJson = status['currentRace'] as Map<String, dynamic>?;
-      if (currentRaceJson != null) {
-        _currentRace = (currentRaceJson['numero'] as num).toInt();
-        _raceStatus = (status['status'] ?? 'IDLE') as String;
-        final remainingSale = status['remainingSaleSeconds'] as num?;
-        final remainingVideo = status['remainingVideoSeconds'] as num?;
-        _countdownSeconds = (remainingSale ?? remainingVideo ?? 0).toInt();
+      // Venta anticipada: mientras corre el video de la carrera actual, el
+      // backend ya puede tener la próxima carrera abierta en 'nextRace'.
+      // Si viene, el POS vende esa carrera de inmediato.
+      final nextRaceJson = status['nextRace'] as Map<String, dynamic>?;
+      final salesRaceJson = nextRaceJson ?? currentRaceJson;
+      if (salesRaceJson != null) {
+        _currentRace = (salesRaceJson['numero'] as num).toInt();
+        if (nextRaceJson != null) {
+          _raceStatus = 'OPEN';
+          _countdownSeconds =
+              (status['nextRaceRemainingSaleSeconds'] as num? ?? 0).toInt();
+        } else {
+          _raceStatus = (status['status'] ?? 'IDLE') as String;
+          final remainingSale = status['remainingSaleSeconds'] as num?;
+          final remainingVideo = status['remainingVideoSeconds'] as num?;
+          _countdownSeconds = (remainingSale ?? remainingVideo ?? 0).toInt();
+        }
 
-        final saleEndAtStr = currentRaceJson['saleEndAt'] as String?;
+        final saleEndAtStr = salesRaceJson['saleEndAt'] as String?;
         if (saleEndAtStr != null) {
           _nextRaceStartEstimate = DateTime.parse(saleEndAtStr)
               .add(const Duration(seconds: _postSaleSeconds));
         }
 
-        // X2: viene en el top-level del status, no dentro de currentRace
-        final x2Dog = (status['x2Dog'] as num? ?? 0).toInt();
+        // X2: viene en el top-level del status y pertenece a la carrera del
+        // video; no aplica a la carrera nueva en venta anticipada.
+        final x2Dog =
+            nextRaceJson != null ? 0 : (status['x2Dog'] as num? ?? 0).toInt();
         if (x2Dog != _x2Dog) _x2Dog = x2Dog;
 
-        final newRaceId = currentRaceJson['id'] as String?;
+        final newRaceId = salesRaceJson['id'] as String?;
         if (newRaceId != _currentRaceId) {
           final hadPreviousRace = _currentRaceId != null;
           _currentRaceId = newRaceId;
@@ -346,10 +364,10 @@ class PosState extends ChangeNotifier {
   }
 
   void selectDog1(int dogNumber) {
-    if (_selectedDog1 == dogNumber) {
-      _selectedDog1 = null;
+    if (_selectedDogs1.contains(dogNumber)) {
+      _selectedDogs1.remove(dogNumber);
     } else {
-      _selectedDog1 = dogNumber;
+      _selectedDogs1.add(dogNumber);
       // If same dog selected in 2° or 3°, clear it from there
       if (_selectedDog2 == dogNumber) {
         _selectedDog2 = null;
@@ -359,9 +377,6 @@ class PosState extends ChangeNotifier {
       }
     }
     notifyListeners();
-    if (_hasAnySelection && _currentBetAmount > 0) {
-      addPlayToTicket();
-    }
   }
 
   void selectDog2(int dogNumber) {
@@ -370,17 +385,12 @@ class PosState extends ChangeNotifier {
     } else {
       _selectedDog2 = dogNumber;
       // If same dog selected in 1° o 3°, clear it from there
-      if (_selectedDog1 == dogNumber) {
-        _selectedDog1 = null;
-      }
+      _selectedDogs1.remove(dogNumber);
       if (_selectedDog3 == dogNumber) {
         _selectedDog3 = null;
       }
     }
     notifyListeners();
-    if (_hasAnySelection && _currentBetAmount > 0) {
-      addPlayToTicket();
-    }
   }
 
   void selectDog3(int dogNumber) {
@@ -389,21 +399,20 @@ class PosState extends ChangeNotifier {
     } else {
       _selectedDog3 = dogNumber;
       // If same dog selected in 1° o 2°, clear it from there
-      if (_selectedDog1 == dogNumber) {
-        _selectedDog1 = null;
-      }
+      _selectedDogs1.remove(dogNumber);
       if (_selectedDog2 == dogNumber) {
         _selectedDog2 = null;
       }
     }
     notifyListeners();
-    if (_hasAnySelection && _currentBetAmount > 0) {
-      addPlayToTicket();
-    }
   }
 
   bool get _hasAnySelection =>
-      _selectedDog1 != null || _selectedDog2 != null || _selectedDog3 != null;
+      _selectedDogs1.isNotEmpty || _selectedDog2 != null || _selectedDog3 != null;
+
+  /// Hay una jugada lista para agregar (selección + monto), pendiente de
+  /// confirmarse con el botón AGREGAR JUGADA.
+  bool get hasPendingPlay => _hasAnySelection && _currentBetAmount > 0;
 
   bool _loadingOddsForBet = false;
 
@@ -415,9 +424,6 @@ class PosState extends ChangeNotifier {
     }
     _currentBetAmount += amount;
     notifyListeners();
-    if (_hasAnySelection && _currentBetAmount > 0) {
-      addPlayToTicket();
-    }
   }
 
   void _addAmountToLastPlay(double amount) {
@@ -511,7 +517,7 @@ class PosState extends ChangeNotifier {
   }
 
   void _resetSelection() {
-    _selectedDog1 = null;
+    _selectedDogs1.clear();
     _selectedDog2 = null;
     _selectedDog3 = null;
     _currentBetAmount = 0.0;
@@ -525,20 +531,37 @@ class PosState extends ChangeNotifier {
     _loadingOddsForBet = false;
   }
 
-  // Jugada reversa: si hay 1° y 2° seleccionados, juega ambos sentidos (1/2 y 2/1)
+  // Jugada reversa:
+  // - Con 2+ perros seleccionados en fila 1°: combina todos entre sí en ambos
+  //   sentidos (parejas ordenadas, sin repetir el mismo perro).
+  // - Con 1 perro en 1° y otro en 2°: juega ambos sentidos (1/2 y 2/1).
   void playReverse() {
-    if (_selectedDog1 == null || _selectedDog2 == null) return;
     final amount = _currentBetAmount > 0 ? _currentBetAmount : 25.0;
-    _addCalculatedPlay(_selectedDog1!, _selectedDog2!, amount);
-    _addCalculatedPlay(_selectedDog2!, _selectedDog1!, amount);
-    _currentBetAmount = amount;
+
+    if (_selectedDogs1.length >= 2) {
+      final dogs = _selectedDogs1.toList()..sort();
+      for (final a in dogs) {
+        for (final b in dogs) {
+          if (a == b) continue;
+          _addCalculatedPlay(a, b, amount);
+        }
+      }
+      _resetSelection();
+      notifyListeners();
+      return;
+    }
+
+    final d1 = _soloDog1;
+    if (d1 == null || _selectedDog2 == null) return;
+    _addCalculatedPlay(d1, _selectedDog2!, amount);
+    _addCalculatedPlay(_selectedDog2!, d1, amount);
     _resetSelection();
     notifyListeners();
   }
 
   // Combina el perro seleccionado en 1° con todos los demás en 2°
   void playAllCombinations() {
-    final dog = _selectedDog1 ?? _selectedDog2;
+    final dog = _soloDog1 ?? _selectedDog2;
     if (dog == null) return;
     final amount = _currentBetAmount > 0 ? _currentBetAmount : 25.0;
     for (int other = 1; other <= 6; other++) {
@@ -552,14 +575,14 @@ class PosState extends ChangeNotifier {
 
   // Jugada R: combina el perro seleccionado con todos los demás en ambos sentidos ($25 c/u, total $350)
   void playR() {
-    final dog = _selectedDog1 ?? _selectedDog2;
+    final dog = _soloDog1 ?? _selectedDog2;
     if (dog == null) return;
     _playCombinedR(dog, 25.0);
   }
 
   // Jugada R/2: igual que R pero cada pale vale $12.5 (total $175)
   void playR2() {
-    final dog = _selectedDog1 ?? _selectedDog2;
+    final dog = _soloDog1 ?? _selectedDog2;
     if (dog == null) return;
     _playCombinedR(dog, 12.5);
   }
@@ -594,7 +617,18 @@ class PosState extends ChangeNotifier {
     if (_currentBetAmount <= 0) return;
     _oddsLoadError = null;
 
-    final d1 = _selectedDog1;
+    // Varios perros en fila 1° → una jugada GANAR por cada uno
+    if (_selectedDogs1.length > 1) {
+      final dogs = _selectedDogs1.toList()..sort();
+      for (final dog in dogs) {
+        _addSinglePlay(dog, _currentBetAmount);
+      }
+      _resetSelection();
+      notifyListeners();
+      return;
+    }
+
+    final d1 = _soloDog1;
     final d2 = _selectedDog2;
     final d3 = _selectedDog3;
 
@@ -697,7 +731,7 @@ class PosState extends ChangeNotifier {
 
   void deleteCurrentTicket() {
     _currentTicketPlays.clear();
-    _selectedDog1 = null;
+    _selectedDogs1.clear();
     _selectedDog2 = null;
     _selectedDog3 = null;
     _currentBetAmount = 0.0;
