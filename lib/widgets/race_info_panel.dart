@@ -7,6 +7,10 @@ class RaceInfoPanel extends StatelessWidget {
   final String raceStatusLabel;
   final int x2Dog;
   final double jackpotAmount;
+  final bool salesLimitEnabled;
+  final double salesRemaining;
+  final double salesLimit;
+  final bool salesBlocked;
 
   const RaceInfoPanel({
     super.key,
@@ -16,6 +20,10 @@ class RaceInfoPanel extends StatelessWidget {
     required this.raceStatusLabel,
     this.x2Dog = 0,
     this.jackpotAmount = 0.0,
+    this.salesLimitEnabled = false,
+    this.salesRemaining = 0.0,
+    this.salesLimit = 0.0,
+    this.salesBlocked = false,
   });
 
   @override
@@ -208,6 +216,16 @@ class RaceInfoPanel extends StatelessWidget {
             ],
           ),
 
+          // Cuadro de SALDO DISPONIBLE — cuenta en descenso hacia cero
+          if (salesLimitEnabled) ...[
+            const SizedBox(width: 24),
+            _SaldoBox(
+              remaining: salesRemaining,
+              limit: salesLimit,
+              blocked: salesBlocked,
+            ),
+          ],
+
           // X2 badge — solo visible cuando la carrera está cerrada/corriendo
           if (x2Dog > 0) ...[
             const SizedBox(width: 20),
@@ -251,6 +269,95 @@ class RaceInfoPanel extends StatelessWidget {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Cuadro de "SALDO DISPONIBLE": muestra el efectivo restante antes de que el
+/// POS se bloquee, contando en descenso desde el límite hacia cero, con una
+/// barra de progreso y color según qué tan bajo esté el saldo.
+class _SaldoBox extends StatelessWidget {
+  final double remaining;
+  final double limit;
+  final bool blocked;
+
+  const _SaldoBox({
+    required this.remaining,
+    required this.limit,
+    required this.blocked,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final double ratio = limit > 0 ? (remaining / limit).clamp(0.0, 1.0) : 0.0;
+    final Color color = blocked
+        ? const Color(0xFFFF5252)
+        : ratio <= 0.15
+            ? const Color(0xFFFF5252)
+            : ratio <= 0.40
+                ? const Color(0xFFFFB300)
+                : const Color(0xFF4CAF50);
+
+    return Container(
+      width: 210,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF10231A),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color, width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                blocked ? 'POS BLOQUEADO' : 'SALDO DISPONIBLE',
+                style: TextStyle(
+                  fontFamily: 'DinNextLtPro',
+                  color: color,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.0,
+                ),
+              ),
+              if (limit > 0)
+                Text(
+                  'de \$${limit.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                    fontFamily: 'DinNextLtPro',
+                    color: Colors.white38,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '\$${remaining.toStringAsFixed(2)}',
+            style: TextStyle(
+              fontFamily: 'DinNextLtPro',
+              color: color,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              height: 1.0,
+            ),
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: ratio,
+              minHeight: 6,
+              backgroundColor: const Color(0xFF2A2A2A),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
         ],
       ),
     );

@@ -122,6 +122,10 @@ class PosState extends ChangeNotifier {
   /// lo que basta con permitir jugadas únicamente mientras está OPEN.
   bool get isSalesOpen => _raceStatus == 'OPEN';
 
+  /// El cajero puede VENDER: la carrera está abierta y el POS no está bloqueado
+  /// por el límite de venta de la agencia. Pagar premios NO usa este gate.
+  bool get canSell => isSalesOpen && !_salesBlocked;
+
   // Tiempo fijo entre el cierre de venta y el inicio de la siguiente carrera
   // (closedDelaySeconds + videoSeconds del backend: 5 + 50).
   static const int _postSaleSeconds = 55;
@@ -228,6 +232,16 @@ class PosState extends ChangeNotifier {
   double _jackpotAmount = 0.0;
   double get jackpotAmount => _jackpotAmount;
 
+  // Límite de venta del POS por agencia (efectivo neto). Viene del backend.
+  bool _salesLimitEnabled = false;
+  bool get salesLimitEnabled => _salesLimitEnabled;
+  double _salesRemaining = 0.0;
+  double get salesRemaining => _salesRemaining;
+  double _salesLimit = 0.0;
+  double get salesLimit => _salesLimit;
+  bool _salesBlocked = false;
+  bool get salesBlocked => _salesBlocked;
+
   Timer? _timer;
   bool _isRefreshing = false;
   int _consecutiveFailures = 0;
@@ -325,6 +339,20 @@ class PosState extends ChangeNotifier {
       final jackpotRaw = status['jackpotAmount'];
       if (jackpotRaw != null) {
         _jackpotAmount = double.tryParse(jackpotRaw.toString()) ?? _jackpotAmount;
+      }
+
+      // Límite de venta del POS (efectivo neto por agencia)
+      _salesLimitEnabled = status['salesLimitEnabled'] == true;
+      if (_salesLimitEnabled) {
+        _salesRemaining =
+            double.tryParse(status['salesRemaining']?.toString() ?? '') ?? 0.0;
+        _salesLimit =
+            double.tryParse(status['salesLimit']?.toString() ?? '') ?? 0.0;
+        _salesBlocked = status['salesBlocked'] == true;
+      } else {
+        _salesRemaining = 0.0;
+        _salesLimit = 0.0;
+        _salesBlocked = false;
       }
 
       notifyListeners();

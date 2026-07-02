@@ -102,11 +102,14 @@ class _JugadaScreenState extends State<JugadaScreen> {
 
   // Imprime el ticket directo — sin modal intermedio
   Future<void> _handlePrintTicket(PosState state) async {
-    if (!state.isSalesOpen) {
+    if (!state.canSell) {
+      final msg = state.salesBlocked
+          ? 'Límite de venta alcanzado. El supervisor debe recoger el efectivo y liberar el crédito.'
+          : 'Ventas cerradas para esta carrera';
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ventas cerradas para esta carrera'),
-          duration: Duration(seconds: 2),
+        SnackBar(
+          content: Text(msg),
+          duration: const Duration(seconds: 3),
         ),
       );
       return;
@@ -201,7 +204,7 @@ class _JugadaScreenState extends State<JugadaScreen> {
 
   // Botón para confirmar la jugada en curso (selección + monto) y sumarla al ticket
   Widget _buildAddPlayButton(PosState state) {
-    final ready = state.isSalesOpen && state.hasPendingPlay;
+    final ready = state.canSell && state.hasPendingPlay;
     return Semantics(
       label: 'Agregar jugada al ticket',
       button: true,
@@ -332,7 +335,7 @@ class _JugadaScreenState extends State<JugadaScreen> {
                                     width: 210,
                                     isSelected: isSelected,
                                     isDimmed: isDimmed,
-                                    onTap: state.isSalesOpen
+                                    onTap: state.canSell
                                         ? () => state.selectDog1(dogNum)
                                         : null,
                                   );
@@ -378,7 +381,7 @@ class _JugadaScreenState extends State<JugadaScreen> {
                                     width: 210,
                                     isSelected: isSelected,
                                     isDimmed: isDimmed,
-                                    onTap: state.isSalesOpen
+                                    onTap: state.canSell
                                         ? () => state.selectDog2(dogNum)
                                         : null,
                                   );
@@ -424,7 +427,7 @@ class _JugadaScreenState extends State<JugadaScreen> {
                                     width: 210,
                                     isSelected: isSelected,
                                     isDimmed: isDimmed,
-                                    onTap: state.isSalesOpen
+                                    onTap: state.canSell
                                         ? () => state.selectDog3(dogNum)
                                         : null,
                                   );
@@ -444,13 +447,13 @@ class _JugadaScreenState extends State<JugadaScreen> {
                       Row(
                         children: [
                           ActionButton(
-                            onTap: state.isSalesOpen ? state.playReverse : null,
+                            onTap: state.canSell ? state.playReverse : null,
                             semanticLabel: 'Jugada reversa: agrega también la combinación 2°/1°',
                             child: Image.asset('assets/resources/felchaarribaabajo.png'),
                           ),
                           const SizedBox(width: 20),
                           ActionButton(
-                            onTap: state.isSalesOpen ? state.playAllCombinations : null,
+                            onTap: state.canSell ? state.playAllCombinations : null,
                             semanticLabel: 'Combina el perro de 1° lugar con todos los demás en 2°',
                             child: Image.asset('assets/resources/flechadelado.png'),
                           ),
@@ -460,13 +463,13 @@ class _JugadaScreenState extends State<JugadaScreen> {
                       Row(
                         children: [
                           ActionButton(
-                            onTap: state.isSalesOpen ? state.playR : null,
+                            onTap: state.canSell ? state.playR : null,
                             semanticLabel: 'Jugada R: combina con todos los perros en ambos sentidos, total \$350',
                             child: Image.asset('assets/resources/imagen_r.png'),
                           ),
                           const SizedBox(width: 20),
                           ActionButton(
-                            onTap: state.isSalesOpen ? state.playR2 : null,
+                            onTap: state.canSell ? state.playR2 : null,
                             semanticLabel: 'Jugada R/2: igual que R pero a mitad de precio, total \$175',
                             child: Image.asset('assets/resources/imagen_r2.png'),
                           ),
@@ -647,22 +650,22 @@ class _JugadaScreenState extends State<JugadaScreen> {
                       children: [
                         AmountButton(
                           amount: 25,
-                          onTap: state.isSalesOpen ? () => state.addBetAmount(25) : () {},
+                          onTap: state.canSell ? () => state.addBetAmount(25) : () {},
                         ),
                         const SizedBox(width: 20),
                         AmountButton(
                           amount: 50,
-                          onTap: state.isSalesOpen ? () => state.addBetAmount(50) : () {},
+                          onTap: state.canSell ? () => state.addBetAmount(50) : () {},
                         ),
                         const SizedBox(width: 20),
                         AmountButton(
                           amount: 100,
-                          onTap: state.isSalesOpen ? () => state.addBetAmount(100) : () {},
+                          onTap: state.canSell ? () => state.addBetAmount(100) : () {},
                         ),
                         const SizedBox(width: 20),
                         AmountButton(
                           amount: 200,
-                          onTap: state.isSalesOpen ? () => state.addBetAmount(200) : () {},
+                          onTap: state.canSell ? () => state.addBetAmount(200) : () {},
                         ),
                         const SizedBox(width: 20),
                         _buildAddPlayButton(state),
@@ -1097,8 +1100,8 @@ class _JugadaScreenState extends State<JugadaScreen> {
           ),
         ),
 
-        // Aviso de ventas cerradas (carrera cerrada/en curso)
-        if (!state.isSalesOpen)
+        // Aviso: POS bloqueado por límite (prioridad) o ventas cerradas
+        if (!state.canSell)
           Positioned(
             top: 0,
             left: 0,
@@ -1106,12 +1109,16 @@ class _JugadaScreenState extends State<JugadaScreen> {
             child: IgnorePointer(
               child: Container(
                 width: double.infinity,
-                color: const Color(0xFFD32F2F),
+                color: state.salesBlocked
+                    ? const Color(0xFFB71C1C)
+                    : const Color(0xFFD32F2F),
                 padding: const EdgeInsets.symmetric(vertical: 6.0),
                 alignment: Alignment.center,
-                child: const Text(
-                  'VENTAS CERRADAS PARA ESTA CARRERA',
-                  style: TextStyle(
+                child: Text(
+                  state.salesBlocked
+                      ? 'POS BLOQUEADO — LÍMITE ALCANZADO. AVISE AL SUPERVISOR'
+                      : 'VENTAS CERRADAS PARA ESTA CARRERA',
+                  style: const TextStyle(
                     fontFamily: 'DinNextLtPro',
                     color: Colors.white,
                     fontSize: 16,
