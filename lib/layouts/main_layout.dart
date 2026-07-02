@@ -79,6 +79,7 @@ class MainLayout extends StatelessWidget {
                         nextRaceStartLabel: state.nextRaceStartLabel,
                         raceStatusLabel: state.raceStatusLabel,
                         x2Dog: state.x2Dog,
+                        x3Dog: state.x3Dog,
                         jackpotAmount: state.jackpotAmount,
                         salesLimitEnabled: state.salesLimitEnabled,
                         salesRemaining: state.salesRemaining,

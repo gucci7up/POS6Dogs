@@ -228,6 +228,10 @@ class PosState extends ChangeNotifier {
   int _x2Dog = 0;
   int get x2Dog => _x2Dog;
 
+  // X3: perro con cuota triple (más raro que X2; excluyente con X2 por carrera)
+  int _x3Dog = 0;
+  int get x3Dog => _x3Dog;
+
   // Jackpot: monto acumulado en el pozo (en vivo desde el backend)
   double _jackpotAmount = 0.0;
   double get jackpotAmount => _jackpotAmount;
@@ -302,17 +306,21 @@ class PosState extends ChangeNotifier {
               .add(const Duration(seconds: _postSaleSeconds));
         }
 
-        // X2: viene en el top-level del status y pertenece a la carrera del
-        // video; no aplica a la carrera nueva en venta anticipada.
+        // X2/X3: vienen en el top-level del status y pertenecen a la carrera
+        // del video; no aplican a la carrera nueva en venta anticipada.
         final x2Dog =
             nextRaceJson != null ? 0 : (status['x2Dog'] as num? ?? 0).toInt();
         if (x2Dog != _x2Dog) _x2Dog = x2Dog;
+        final x3Dog =
+            nextRaceJson != null ? 0 : (status['x3Dog'] as num? ?? 0).toInt();
+        if (x3Dog != _x3Dog) _x3Dog = x3Dog;
 
         final newRaceId = salesRaceJson['id'] as String?;
         if (newRaceId != _currentRaceId) {
           final hadPreviousRace = _currentRaceId != null;
           _currentRaceId = newRaceId;
           _x2Dog = 0; // reset X2 al cambiar de carrera
+          _x3Dog = 0; // reset X3 al cambiar de carrera
           if (hadPreviousRace) {
             unawaited(_refreshResultsHistory());
             unawaited(_refreshOddsHistory());

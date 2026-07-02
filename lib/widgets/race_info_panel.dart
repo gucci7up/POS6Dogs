@@ -6,6 +6,7 @@ class RaceInfoPanel extends StatelessWidget {
   final String nextRaceStartLabel;
   final String raceStatusLabel;
   final int x2Dog;
+  final int x3Dog;
   final double jackpotAmount;
   final bool salesLimitEnabled;
   final double salesRemaining;
@@ -19,6 +20,7 @@ class RaceInfoPanel extends StatelessWidget {
     required this.nextRaceStartLabel,
     required this.raceStatusLabel,
     this.x2Dog = 0,
+    this.x3Dog = 0,
     this.jackpotAmount = 0.0,
     this.salesLimitEnabled = false,
     this.salesRemaining = 0.0,
@@ -226,49 +228,64 @@ class RaceInfoPanel extends StatelessWidget {
             ),
           ],
 
-          // X2 badge — solo visible cuando la carrera está cerrada/corriendo
-          if (x2Dog > 0) ...[
+          // Multiplicador X3 (rojo) o X2 (naranja) — excluyentes por carrera.
+          // Solo visible cuando la carrera está cerrada/corriendo.
+          if (x3Dog > 0) ...[
             const SizedBox(width: 20),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFF6B35),
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0xFFFF6B35),
-                    blurRadius: 8,
-                    spreadRadius: 1,
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'X2',
-                    style: TextStyle(
-                      fontFamily: 'DinNextLtPro',
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Perro $x2Dog',
-                    style: const TextStyle(
-                      fontFamily: 'DinNextLtPro',
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _MultiplierBadge(label: 'X3', dog: x3Dog, color: const Color(0xFFE53935)),
+          ] else if (x2Dog > 0) ...[
+            const SizedBox(width: 20),
+            _MultiplierBadge(label: 'X2', dog: x2Dog, color: const Color(0xFFFF6B35)),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Badge de multiplicador (X2 naranja / X3 rojo) que anuncia el perro con
+/// cuota aumentada esta carrera.
+class _MultiplierBadge extends StatelessWidget {
+  final String label;
+  final int dog;
+  final Color color;
+
+  const _MultiplierBadge({required this.label, required this.dog, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(color: color, blurRadius: 8, spreadRadius: 1),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontFamily: 'DinNextLtPro',
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            'Perro $dog',
+            style: const TextStyle(
+              fontFamily: 'DinNextLtPro',
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     );
